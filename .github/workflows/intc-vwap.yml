@@ -1,5 +1,5 @@
 name: intc-vwap
-
+# v2 - register
 # Cloud VWAP mean-reversion day-trader for INTC. Runs in GitHub Actions (laptop OFF).
 # Arms a broker-side BRACKET order (entry + linked take-profit + stop) so exits are durable.
 on:
