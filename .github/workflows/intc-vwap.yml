@@ -1,0 +1,25 @@
+name: intc-vwap
+
+# Cloud VWAP mean-reversion day-trader for INTC. Runs in GitHub Actions (laptop OFF).
+# Arms a broker-side BRACKET order (entry + linked take-profit + stop) so exits are durable.
+on:
+  schedule:
+    - cron: '*/5 13-20 * * 1-5'   # every ~5 min, US market hours (UTC), weekdays
+  workflow_dispatch: {}
+
+concurrency:
+  group: intc-vwap
+  cancel-in-progress: false
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run INTC VWAP trader
+        shell: pwsh
+        env:
+          APCA_API_BASE_URL:   ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID:     ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+        run: pwsh ./intc_vwap.ps1
