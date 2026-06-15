@@ -9,3 +9,5 @@ Paper day-trader on **INTC** using a VWAP mean-reversion strategy. Runs in **Git
 - **Schedule:** trade every ~5 min market hours; record daily P&L after close into `pnl_history.csv` (committed back) to build a real track record.
 
 Tuning knobs in `intc_vwap.ps1`: `$BUDGET`, `$TARGET`, `$MAX_RISK`, `$STOP_BUF`.
+
+<!-- trigger actions scan -->
