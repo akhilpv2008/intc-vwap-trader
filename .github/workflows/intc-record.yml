@@ -1,5 +1,5 @@
 name: intc-record
-
+# v2 - register
 on:
   schedule:
     - cron: '10 20 * * 1-5'   # ~just after 4pm ET close
