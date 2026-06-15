@@ -12,9 +12,10 @@ $h=@{ "APCA-API-KEY-ID"=$key; "APCA-API-SECRET-KEY"=$sec }
 
 $SYM      = "INTC"
 $BUDGET   = 10000.0   # ~$ to deploy
-$TARGET   = 1.50      # profit per share
-$MAX_RISK = 1.75      # max $ per share we'll risk (stop cap)
-$STOP_BUF = 0.10      # place stop this far below swing low
+$TARGET   = 2.00      # profit per share
+$STOP_MIN = 1.30      # stop must be at least this far below entry (survive normal noise ~1.5x ATR)
+$STOP_MAX = 2.20      # ...but never risk more than this per share
+$STOP_BUF = 0.10      # prefer placing stop this far below swing low (within the min/max band)
 
 function Stamp($m){ Write-Host ("{0}  {1}" -f (Get-Date -Format 'u'), $m) }
 function OpenOrders(){ @(Invoke-RestMethod -Uri "$base/v2/orders?status=open&symbols=$SYM&nested=true" -Headers $h) }
@@ -60,8 +61,11 @@ if($existing.Count -ge 1){ Stamp "buy bracket already resting @ $($existing[0].l
 $entry = [math]::Round([math]::Min($vwap, $price - 0.05), 2)
 $lot   = [int][math]::Floor($BUDGET / $entry)
 $tp    = [math]::Round($entry + $TARGET, 2)
-$stopP = [math]::Round([math]::Max($swingLow - $STOP_BUF, $entry - $MAX_RISK), 2)
-if($stopP -ge $entry){ $stopP = [math]::Round($entry - $MAX_RISK,2) }
+# stop below swing low, but clamped to a sensible volatility band so it isn't too tight (whipsaw) or too wide (big loss)
+$dist  = $entry - ($swingLow - $STOP_BUF)
+if($dist -lt $STOP_MIN){ $dist = $STOP_MIN }
+if($dist -gt $STOP_MAX){ $dist = $STOP_MAX }
+$stopP = [math]::Round($entry - $dist, 2)
 
 $body=@{ symbol=$SYM; qty="$lot"; side="buy"; type="limit"; time_in_force="day"; limit_price="$entry";
          order_class="bracket"; take_profit=@{ limit_price="$tp" }; stop_loss=@{ stop_price="$stopP" } } | ConvertTo-Json -Depth 5
