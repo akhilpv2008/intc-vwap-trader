@@ -20,6 +20,8 @@ function OpenBuys($sym){ @(Invoke-RestMethod -Uri "$base/v2/orders?status=open&s
 function CancelSells($sym){ foreach($o in (OpenSells $sym)){ try{ Invoke-RestMethod -Uri "$base/v2/orders/$($o.id)" -Method Delete -Headers $h|Out-Null }catch{} } }
 function CancelAll($sym){ foreach($o in @(Invoke-RestMethod -Uri "$base/v2/orders?status=open&symbols=$sym" -Headers $h)){ try{ Invoke-RestMethod -Uri "$base/v2/orders/$($o.id)" -Method Delete -Headers $h|Out-Null }catch{} } }
 function Pos($sym){ try{ Invoke-RestMethod -Uri "$base/v2/positions/$sym" -Headers $h }catch{ $null } }
+function EmaSeries($vals,$period){ $k=2.0/($period+1); $e=$vals[0]; $out=@($e); for($i=1;$i -lt $vals.Count;$i++){ $e=$vals[$i]*$k+$e*(1-$k); $out+=$e }; return $out }
+function Rsi($closes,$period=14){ if($closes.Count -le $period){ return 50 } ; $g=0.0;$l=0.0; for($i=$closes.Count-$period;$i -lt $closes.Count;$i++){ $d=$closes[$i]-$closes[$i-1]; if($d -gt 0){$g+=$d}else{$l+=-$d} }; $al=$l/$period; if($al -eq 0){ return 100 }; $rs=($g/$period)/$al; return [math]::Round(100-100/(1+$rs),1) }
 function PlaceOCO($sym,$qty,$tp,$stop){ $b=@{symbol=$sym;qty="$qty";side="sell";type="limit";time_in_force="gtc";order_class="oco";take_profit=@{limit_price="$tp"};stop_loss=@{stop_price="$stop"}}|ConvertTo-Json -Depth 5; Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $b -ContentType "application/json"|Out-Null }
 
 $clock=Invoke-RestMethod -Uri "$base/v2/clock" -Headers $h
@@ -46,13 +48,24 @@ if($killed){ Stamp "KILL-SWITCH day P&L $([math]::Round($dayPL,2)) - no new entr
 
 foreach($s in $syms){
   try{
-    $start=(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddT13:30:00Z")
-    $bars=(Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=5Min&start=$start&limit=80&feed=iex" -Headers $h).bars
-    if(-not $bars -or $bars.Count -lt 4){ continue }
+    # multi-day 5-min bars for RSI/MACD; today's slice for VWAP
+    $start=(Get-Date).ToUniversalTime().AddDays(-5).ToString("yyyy-MM-ddT00:00:00Z")
+    $all=(Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=5Min&start=$start&limit=600&feed=iex" -Headers $h).bars
+    if(-not $all -or $all.Count -lt 40){ continue }
+    $bars=@($all | Where-Object { $_.t -like "$today*" }); if($bars.Count -lt 4){ continue }
     $price=[double](Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$s/trades/latest" -Headers $h).trade.p
     $atr5=(($bars[-10..-1]|ForEach-Object{[double]$_.h-[double]$_.l})|Measure-Object -Average).Average
     $cumPV=0.0;$cumV=0.0; foreach($b in $bars){ $tp=([double]$b.h+[double]$b.l+[double]$b.c)/3; $cumPV+=$tp*[double]$b.v; $cumV+=[double]$b.v }
     $vwap=[math]::Round($cumPV/$cumV,2)
+    # RSI(14) + MACD(12/26/9) on the multi-day close series
+    $closes=@($all | ForEach-Object { [double]$_.c })
+    $rsiNow=Rsi $closes 14; $rsiPrev=Rsi ($closes[0..($closes.Count-2)]) 14
+    $ema12=EmaSeries $closes 12; $ema26=EmaSeries $closes 26
+    $macdLine=@(); for($i=0;$i -lt $closes.Count;$i++){ $macdLine+=($ema12[$i]-$ema26[$i]) }
+    $sig=EmaSeries $macdLine 9
+    $macdNow=$macdLine[-1]; $sigNow=$sig[-1]
+    $rsiOk=($rsiNow -gt 40 -and $rsiNow -lt 72 -and $rsiNow -ge $rsiPrev)
+    $macdOk=($macdNow -gt $sigNow)
     $p=Pos $s; $qty= if($p){ [int]$p.qty } else { 0 }
 
     if($qty -gt 0){
@@ -82,6 +95,9 @@ foreach($s in $syms){
     $lastBull=([double]$lb.c -ge [double]$lb.o)
     if($price -lt $vwap){ Stamp "$s below VWAP ($price<$vwap) - no momentum long"; continue }
     if(-not $lastBull){ Stamp "$s last candle bearish - wait for bullish confirmation"; continue }
+    if(-not $rsiOk){ Stamp "$s RSI $rsiNow not confirming (need 40-72 & rising)"; continue }
+    if(-not $macdOk){ Stamp "$s MACD below signal ($([math]::Round($macdNow,3))<$([math]::Round($sigNow,3))) - no cross"; continue }
+    Stamp "$s SIGNALS OK: price>VWAP, bullish candle, RSI $rsiNow rising, MACD>signal"
     # enter on a tiny pullback within the uptrend; ride with the trailing stop
     $entry=[math]::Round($price-0.05,2)
     $lot=[int][math]::Floor($perBudget/$entry); if($lot -lt 1){ continue }
