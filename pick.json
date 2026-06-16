@@ -1,8 +1,26 @@
 {
     "date":  "2026-06-16",
-    "symbol":  "CCL",
-    "price":  30.12,
-    "atr_pct":  5.76,
-    "score":  37.18,
-    "reason":  "highest liquidity*volatility score in tradeable band"
+    "picks":  [
+                  {
+                      "symbol":  "SOFI",
+                      "price":  17.73,
+                      "atr_pct":  5.4,
+                      "gap_pct":  0.11,
+                      "score":  35.84
+                  },
+                  {
+                      "symbol":  "RIVN",
+                      "price":  15.94,
+                      "atr_pct":  6.88,
+                      "gap_pct":  0,
+                      "score":  33.39
+                  },
+                  {
+                      "symbol":  "AAL",
+                      "price":  15.7,
+                      "atr_pct":  5.12,
+                      "gap_pct":  0,
+                      "score":  33.08
+                  }
+              ]
 }

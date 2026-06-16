@@ -7,12 +7,13 @@ $h=@{ "APCA-API-KEY-ID"=$key; "APCA-API-SECRET-KEY"=$sec }
 $csv=Join-Path $PSScriptRoot "pnl_history.csv"
 $pickFile=Join-Path $PSScriptRoot "pick.json"
 $today=(Get-Date).ToUniversalTime().ToString("yyyy-MM-dd")
-$sym = if(Test-Path $pickFile){ (Get-Content $pickFile|ConvertFrom-Json).symbol } else { "" }
+$syms = if(Test-Path $pickFile){ @((Get-Content $pickFile|ConvertFrom-Json).picks | ForEach-Object { $_.symbol }) } else { @() }
+$sym = ($syms -join "|")
 
 $acct=Invoke-RestMethod -Uri "$base/v2/account" -Headers $h
 $dayPL=[math]::Round([double]$acct.equity-[double]$acct.last_equity,2)
 $acts=Invoke-RestMethod -Uri "$base/v2/account/activities/FILL?date=$today" -Headers $h
-$f=@($acts | Where-Object { $_.symbol -eq $sym })
+$f=@($acts | Where-Object { $syms -contains $_.symbol })
 $buy=0.0;$sell=0.0;$nb=0;$ns=0
 foreach($x in $f){ $v=[double]$x.qty*[double]$x.price; if($x.side -eq "buy"){$buy+=$v;$nb++}else{$sell+=$v;$ns++} }
 $symPL=[math]::Round($sell-$buy,2); $rt=[math]::Min($nb,$ns)
