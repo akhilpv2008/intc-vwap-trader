@@ -1,0 +1,8 @@
+{
+    "date":  "2026-06-16",
+    "symbol":  "CCL",
+    "price":  30.12,
+    "atr_pct":  5.76,
+    "score":  37.18,
+    "reason":  "highest liquidity*volatility score in tradeable band"
+}

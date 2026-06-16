@@ -1,0 +1,27 @@
+name: auto-record
+on:
+  schedule:
+    - cron: '12 20 * * 1-5'   # ~just after 4pm ET close
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency: { group: auto-record, cancel-in-progress: false }
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append daily P&L
+        shell: pwsh
+        env:
+          APCA_API_BASE_URL:   ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID:     ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+        run: pwsh ./auto_record.ps1
+      - name: Commit history
+        run: |
+          git config user.name "auto-bot"
+          git config user.email "akhilfromusa@gmail.com"
+          git add pnl_history.csv
+          git diff --staged --quiet || git commit -m "record: $(date -u +%Y-%m-%d)"
+          git push

@@ -1,0 +1,27 @@
+name: auto-screener
+on:
+  schedule:
+    - cron: '32 13 * * 1-5'   # 9:32 ET - pick the day's stock from the watchlist
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency: { group: auto-screener, cancel-in-progress: false }
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Screen watchlist
+        shell: pwsh
+        env:
+          APCA_API_BASE_URL:   ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID:     ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+        run: pwsh ./screener.ps1
+      - name: Commit pick
+        run: |
+          git config user.name "auto-bot"
+          git config user.email "akhilfromusa@gmail.com"
+          git add pick.json
+          git diff --staged --quiet || git commit -m "pick: $(date -u +%Y-%m-%d)"
+          git push

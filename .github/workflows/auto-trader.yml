@@ -1,0 +1,18 @@
+name: auto-trader
+on:
+  schedule:
+    - cron: '*/5 13-20 * * 1-5'   # every ~5 min, market hours; waits for the day's pick
+  workflow_dispatch: {}
+concurrency: { group: auto-trader, cancel-in-progress: false }
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trade the day's pick
+        shell: pwsh
+        env:
+          APCA_API_BASE_URL:   ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID:     ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+        run: pwsh ./trader.ps1
