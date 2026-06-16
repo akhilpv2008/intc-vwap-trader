@@ -78,7 +78,12 @@ foreach($s in $syms){
     $fk=($lbRed -and $lbBody -gt 1.3*$avgBody -and [double]$lb.v -gt 1.3*$avgVol)
     if($fk){ if($existing.Count){ CancelAll $s }; Stamp "$s falling-knife skip"; continue }
     if($existing.Count -ge 1){ Stamp "$s buy resting @ $($existing[0].limit_price)"; continue }
-    $entry=[math]::Round([math]::Min($vwap,$price-0.03),2)
+    # MOMENTUM gate (candlestick + trend): only buy strength - price above VWAP and last candle bullish
+    $lastBull=([double]$lb.c -ge [double]$lb.o)
+    if($price -lt $vwap){ Stamp "$s below VWAP ($price<$vwap) - no momentum long"; continue }
+    if(-not $lastBull){ Stamp "$s last candle bearish - wait for bullish confirmation"; continue }
+    # enter on a tiny pullback within the uptrend; ride with the trailing stop
+    $entry=[math]::Round($price-0.05,2)
     $lot=[int][math]::Floor($perBudget/$entry); if($lot -lt 1){ continue }
     $stopDist=[math]::Max($INIT_STOP_PCT*$entry,1.5*$atr5)
     $tp=[math]::Round($entry*(1+$CEIL_PCT),2); $stopP=[math]::Round($entry-$stopDist,2)

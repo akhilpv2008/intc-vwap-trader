@@ -1,26 +1,27 @@
 {
     "date":  "2026-06-16",
+    "strategy":  "momentum+trailing",
     "picks":  [
                   {
-                      "symbol":  "SOFI",
-                      "price":  17.73,
-                      "atr_pct":  5.4,
-                      "gap_pct":  0.11,
-                      "score":  35.84
+                      "symbol":  "INTC",
+                      "price":  117.05,
+                      "pct":  8.53,
+                      "vol_m":  4,
+                      "score":  8.53
                   },
                   {
                       "symbol":  "RIVN",
                       "price":  15.94,
-                      "atr_pct":  6.88,
-                      "gap_pct":  0,
-                      "score":  33.39
+                      "pct":  6.88,
+                      "vol_m":  1,
+                      "score":  6.88
                   },
                   {
-                      "symbol":  "AAL",
-                      "price":  15.7,
-                      "atr_pct":  5.12,
-                      "gap_pct":  0,
-                      "score":  33.08
+                      "symbol":  "COIN",
+                      "price":  169.28,
+                      "pct":  5.77,
+                      "vol_m":  0.3,
+                      "score":  5.77
                   }
               ]
 }
