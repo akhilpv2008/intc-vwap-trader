@@ -48,6 +48,10 @@ if($ranked.Count -lt 3){
 $top=@($ranked | Select-Object -First 10)
 if(-not $top -or $top.Count -eq 0){ Write-Host "no candidates - leaving prior pick"; exit 0 }
 $picks=@($top | ForEach-Object { [ordered]@{ symbol=$_.Sym; price=$_.Price; pct=$_.Pct; vol_m=$_.VolM; score=$_.Score } })
+# SAFETY: always keep currently-held symbols in the pool so a re-screen never orphans a live trade
+try{ $hold=@((Invoke-RestMethod -Uri "https://paper-api.alpaca.markets/v2/positions" -Headers $h) | ForEach-Object { $_.symbol }) }catch{ $hold=@() }
+$have=@($picks | ForEach-Object { $_.symbol })
+foreach($hs in $hold){ if($have -notcontains $hs -and $exclude -notcontains $hs){ $picks=@([ordered]@{symbol=$hs;price=0;pct=0;vol_m=0;score=999}) + $picks; Write-Host "kept held $hs in pool" } }
 $out=[ordered]@{ date=(Get-Date).ToUniversalTime().ToString("yyyy-MM-dd"); strategy="momentum+trailing"; picks=$picks }
 $out | ConvertTo-Json -Depth 5 | Set-Content $pickFile
 Write-Host ("PICKS: " + (($top|ForEach-Object{ "$($_.Sym) @$($_.Price) (+$($_.Pct)%)" }) -join ", "))

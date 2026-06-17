@@ -4,73 +4,73 @@
     "picks":  [
                   {
                       "symbol":  "INTC",
-                      "price":  119.14,
+                      "price":  119.24,
                       "pct":  6.96,
-                      "vol_m":  0.3,
+                      "vol_m":  0.4,
                       "score":  6.96
                   },
                   {
                       "symbol":  "HOOD",
-                      "price":  100.83,
-                      "pct":  6.57,
+                      "price":  100.975,
+                      "pct":  6.64,
                       "vol_m":  0.2,
-                      "score":  6.57
+                      "score":  6.64
                   },
                   {
                       "symbol":  "MARA",
-                      "price":  14.295,
+                      "price":  14.37,
                       "pct":  6.53,
                       "vol_m":  0.2,
                       "score":  6.53
                   },
                   {
                       "symbol":  "ROKU",
-                      "price":  139.2,
+                      "price":  139.1,
                       "pct":  6.42,
                       "vol_m":  0.1,
                       "score":  6.42
                   },
                   {
                       "symbol":  "RIVN",
-                      "price":  16.235,
+                      "price":  16.09,
                       "pct":  5.92,
                       "vol_m":  0.2,
                       "score":  5.92
                   },
                   {
                       "symbol":  "RIOT",
-                      "price":  27.18,
+                      "price":  27.28,
                       "pct":  5.85,
                       "vol_m":  0,
                       "score":  5.85
                   },
                   {
                       "symbol":  "AFRM",
-                      "price":  76.49,
-                      "pct":  5.7,
+                      "price":  76.58,
+                      "pct":  5.71,
                       "vol_m":  0,
-                      "score":  5.7
+                      "score":  5.71
                   },
                   {
                       "symbol":  "CVNA",
-                      "price":  65.22,
+                      "price":  65.05,
                       "pct":  5.28,
                       "vol_m":  0.1,
                       "score":  5.28
                   },
                   {
                       "symbol":  "COIN",
-                      "price":  169.6,
+                      "price":  169.295,
                       "pct":  4.85,
                       "vol_m":  0,
                       "score":  4.85
                   },
                   {
-                      "symbol":  "COIN",
-                      "price":  169.6,
-                      "pct":  4.85,
-                      "vol_m":  0,
-                      "score":  4.85
+                      "symbol":  "CCL",
+                      "price":  31.18,
+                      "pct":  4.68,
+                      "vol_m":  0.3,
+                      "score":  4.68
                   }
               ]
 }
