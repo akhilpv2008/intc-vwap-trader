@@ -37,8 +37,11 @@ $syms=@($pick.picks | ForEach-Object { $_.symbol })
 # auto-flatten near close
 $minsToClose=([datetime]$clock.next_close - [datetime]$clock.timestamp).TotalMinutes
 if($minsToClose -le $FLATTEN_MIN){
-  foreach($s in $syms){ CancelAll $s; $p=Pos $s; if($p -and [int]$p.qty -gt 0){ $b=@{symbol=$s;qty="$($p.qty)";side="sell";type="market";time_in_force="day"}|ConvertTo-Json; try{ Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $b -ContentType "application/json"|Out-Null; Stamp "FLATTEN sold $($p.qty) $s" }catch{} } }
-  Stamp "end-of-day flatten done."; exit 0
+  # RELIABLE flatten: cancel ALL open orders account-wide, then close each pick position at market
+  try{ Invoke-RestMethod -Uri "$base/v2/orders" -Method Delete -Headers $h|Out-Null }catch{}
+  Start-Sleep -Seconds 2
+  foreach($s in $syms){ $p=Pos $s; if($p -and [int]$p.qty -gt 0){ try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "FLATTEN closed $($p.qty) $s" }catch{ Stamp "flatten err $s: $($_.ErrorDetails.Message)" } } }
+  Stamp "end-of-day flatten done (cancel-all + close-position)."; exit 0
 }
 
 $acct=Invoke-RestMethod -Uri "$base/v2/account" -Headers $h
