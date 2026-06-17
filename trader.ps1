@@ -99,7 +99,10 @@ foreach($s in $syms){
 # Pass 2: fill free slots with the strongest candidates
 $committed=$held+$pendingBuys
 $slots=$MAX_POS-$committed
-Stamp "slots: held=$held pending=$pendingBuys free=$slots candidates=$($cands.Count)"
+# CASH-ONLY guard: never open new positions on margin
+$affordable=[math]::Floor([double]$acct.cash/$perBudget)
+if($affordable -lt $slots){ $slots=[math]::Max(0,$affordable) }
+Stamp "slots: held=$held pending=$pendingBuys free=$slots candidates=$($cands.Count) cash=$([math]::Round([double]$acct.cash,2)) (cash-only, no margin)"
 if($slots -gt 0 -and -not $killed -and $cands.Count -gt 0){
   foreach($cd in (@($cands | Sort-Object Score -Descending) | Select-Object -First $slots)){
     $ref=$cd.Price; $lot=[int][math]::Floor($perBudget/$ref); if($lot -lt 1){ continue }
