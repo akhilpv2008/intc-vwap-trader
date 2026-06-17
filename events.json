@@ -1,0 +1,8 @@
+{
+  "_comment": "High-impact macro events. During each blackout window (UTC) the bot opens NO new positions; it still manages/flattens held ones. After the window, normal scanning resumes (post-event momentum). Refine dates as official schedules confirm.",
+  "events": [
+    { "label": "Jobs report (NFP)", "start": "2026-07-03T13:30:00Z", "end": "2026-07-03T14:15:00Z" },
+    { "label": "CPI (June, approx)", "start": "2026-07-15T13:30:00Z", "end": "2026-07-15T14:15:00Z" },
+    { "label": "FOMC decision (Jul)", "start": "2026-07-29T17:15:00Z", "end": "2026-07-29T18:45:00Z" }
+  ]
+}

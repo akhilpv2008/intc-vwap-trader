@@ -45,6 +45,14 @@ $acct=Invoke-RestMethod -Uri "$base/v2/account" -Headers $h
 $dayPL=[double]$acct.equity-[double]$acct.last_equity
 $killed=($dayPL -le -$MAX_DAILY_LOSS)
 if($killed){ Stamp "KILL-SWITCH day P&L $([math]::Round($dayPL,2)) - no new entries." }
+# EVENT BLACKOUT: no new entries during FOMC/CPI/jobs windows (still manage/flatten held)
+$evFile=Join-Path $PSScriptRoot "events.json"
+if(Test-Path $evFile){
+  $nowU=(Get-Date).ToUniversalTime()
+  foreach($e in (Get-Content $evFile|ConvertFrom-Json).events){
+    if($nowU -ge [datetime]$e.start -and $nowU -le [datetime]$e.end){ $killed=$true; Stamp "EVENT BLACKOUT: $($e.label) - no new entries until $($e.end)" }
+  }
+}
 
 # Pass 1: manage held positions (trailing) + count committed slots + collect candidates
 $held=0; $pendingBuys=0; $cands=@()
