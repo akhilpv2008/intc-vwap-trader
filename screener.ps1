@@ -30,7 +30,7 @@ $ranked | Format-Table -AutoSize | Out-String | Write-Host
 # FALLBACK: if fewer than 3 liquid movers today, fill from the volatile-liquid watchlist
 if($ranked.Count -lt 3){
   Write-Host "only $($ranked.Count) liquid movers - filling from volatility watchlist"
-  $watch="AMD","NVDA","AAPL","AMZN","INTC","PLTR","SOFI","F","BAC","MU","AAL","CCL","NIO","COIN","RIVN","DKNG","MARA","RIOT","HOOD","SNAP","UBER","BABA","NKE","DIS","SHOP","COIN","PYPL","ROKU","AFRM","DAL","CVNA","XYZ"
+  $watch="AMD","NVDA","AAPL","AMZN","INTC","PLTR","SOFI","F","BAC","MU","AAL","CCL","NIO","COIN","RIVN","DKNG","MARA","RIOT","HOOD","SNAP","UBER","BABA","NKE","DIS","SHOP","PYPL","ROKU","AFRM","DAL","CVNA","XYZ"
   $dstart=(Get-Date).ToUniversalTime().AddDays(-7).ToString("yyyy-MM-ddT00:00:00Z")
   $have=$ranked | ForEach-Object { $_.Sym }
   $fb=@()
@@ -45,7 +45,7 @@ if($ranked.Count -lt 3){
   }
   $ranked += ($fb | Sort-Object Score -Descending)
 }
-$top=@($ranked | Select-Object -First 3)
+$top=@($ranked | Select-Object -First 10)
 if(-not $top -or $top.Count -eq 0){ Write-Host "no candidates - leaving prior pick"; exit 0 }
 $picks=@($top | ForEach-Object { [ordered]@{ symbol=$_.Sym; price=$_.Price; pct=$_.Pct; vol_m=$_.VolM; score=$_.Score } })
 $out=[ordered]@{ date=(Get-Date).ToUniversalTime().ToString("yyyy-MM-dd"); strategy="momentum+trailing"; picks=$picks }
