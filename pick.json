@@ -1,27 +1,27 @@
 {
-    "date":  "2026-06-16",
+    "date":  "2026-06-17",
     "strategy":  "momentum+trailing",
     "picks":  [
                   {
                       "symbol":  "INTC",
-                      "price":  117.05,
-                      "pct":  8.53,
-                      "vol_m":  4,
-                      "score":  8.53
+                      "price":  120.925,
+                      "pct":  6.58,
+                      "vol_m":  0,
+                      "score":  6.58
                   },
                   {
                       "symbol":  "RIVN",
-                      "price":  15.94,
-                      "pct":  6.88,
-                      "vol_m":  1,
-                      "score":  6.88
+                      "price":  16.12,
+                      "pct":  5.41,
+                      "vol_m":  0,
+                      "score":  5.41
                   },
                   {
-                      "symbol":  "COIN",
-                      "price":  169.28,
-                      "pct":  5.77,
-                      "vol_m":  0.3,
-                      "score":  5.77
+                      "symbol":  "CCL",
+                      "price":  31.33,
+                      "pct":  4.54,
+                      "vol_m":  0,
+                      "score":  4.54
                   }
               ]
 }

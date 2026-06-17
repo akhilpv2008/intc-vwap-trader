@@ -51,8 +51,8 @@ foreach($s in $syms){
     # multi-day 5-min bars for RSI/MACD; today's slice for VWAP
     $start=(Get-Date).ToUniversalTime().AddDays(-5).ToString("yyyy-MM-ddT00:00:00Z")
     $all=(Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=5Min&start=$start&limit=600&feed=iex" -Headers $h).bars
-    if(-not $all -or $all.Count -lt 40){ continue }
-    $bars=@($all | Where-Object { $_.t -like "$today*" }); if($bars.Count -lt 4){ continue }
+    if(-not $all -or $all.Count -lt 40){ Stamp "$s insufficient history - skip"; continue }
+    $bars=@($all | Where-Object { $_.t -like "$today*" }); if($bars.Count -lt 4){ Stamp "$s only $($bars.Count) bars so far today - waiting for more data (need ~20 min)"; continue }
     $price=[double](Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$s/trades/latest" -Headers $h).trade.p
     $atr5=(($bars[-10..-1]|ForEach-Object{[double]$_.h-[double]$_.l})|Measure-Object -Average).Average
     $cumPV=0.0;$cumV=0.0; foreach($b in $bars){ $tp=([double]$b.h+[double]$b.l+[double]$b.c)/3; $cumPV+=$tp*[double]$b.v; $cumV+=[double]$b.v }

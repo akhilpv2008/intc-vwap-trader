@@ -1,2 +1,2 @@
-date,account_equity,account_day_pl,intc_fills,buys,sells,round_trips,intc_cash_pl,open_qty
+date,symbol,equity,account_day_pl,round_trips,symbol_cash_pl,cumulative_vs_10k
 2026-06-16,CCL,10429.08,-254.87,0,0,429.08
