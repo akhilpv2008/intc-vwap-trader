@@ -22,7 +22,7 @@ function CancelAll($sym){ foreach($o in @(Invoke-RestMethod -Uri "$base/v2/order
 function Pos($sym){ try{ Invoke-RestMethod -Uri "$base/v2/positions/$sym" -Headers $h }catch{ $null } }
 function EmaSeries($vals,$period){ $k=2.0/($period+1); $e=$vals[0]; $out=@($e); for($i=1;$i -lt $vals.Count;$i++){ $e=$vals[$i]*$k+$e*(1-$k); $out+=$e }; return $out }
 function Rsi($closes,$period=14){ if($closes.Count -le $period){ return 50 } ; $g=0.0;$l=0.0; for($i=$closes.Count-$period;$i -lt $closes.Count;$i++){ $d=$closes[$i]-$closes[$i-1]; if($d -gt 0){$g+=$d}else{$l+=-$d} }; $al=$l/$period; if($al -eq 0){ return 100 }; $rs=($g/$period)/$al; return [math]::Round(100-100/(1+$rs),1) }
-function PlaceBracket($sym,$lot,$entry,$tp,$stop){ $b=@{symbol=$sym;qty="$lot";side="buy";type="limit";time_in_force="day";limit_price="$entry";order_class="bracket";take_profit=@{limit_price="$tp"};stop_loss=@{stop_price="$stop"}}|ConvertTo-Json -Depth 5; Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $b -ContentType "application/json"|Out-Null }
+function PlaceBracket($sym,$lot,$tp,$stop){ $b=@{symbol=$sym;qty="$lot";side="buy";type="market";time_in_force="day";order_class="bracket";take_profit=@{limit_price="$tp"};stop_loss=@{stop_price="$stop"}}|ConvertTo-Json -Depth 5; Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $b -ContentType "application/json"|Out-Null }
 function PlaceOCO($sym,$qty,$tp,$stop){ $b=@{symbol=$sym;qty="$qty";side="sell";type="limit";time_in_force="gtc";order_class="oco";take_profit=@{limit_price="$tp"};stop_loss=@{stop_price="$stop"}}|ConvertTo-Json -Depth 5; Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $b -ContentType "application/json"|Out-Null }
 
 $clock=Invoke-RestMethod -Uri "$base/v2/clock" -Headers $h
@@ -101,9 +101,9 @@ $slots=$MAX_POS-$committed
 Stamp "slots: held=$held pending=$pendingBuys free=$slots candidates=$($cands.Count)"
 if($slots -gt 0 -and -not $killed -and $cands.Count -gt 0){
   foreach($cd in (@($cands | Sort-Object Score -Descending) | Select-Object -First $slots)){
-    $entry=[math]::Round($cd.Price-0.03,2); $lot=[int][math]::Floor($perBudget/$entry); if($lot -lt 1){ continue }
-    $stopDist=[math]::Max($INIT_STOP_PCT*$entry,1.5*$cd.Atr)
-    $tp=[math]::Round($entry*(1+$CEIL_PCT),2); $stopP=[math]::Round($entry-$stopDist,2)
-    try{ PlaceBracket $cd.S $lot $entry $tp $stopP; Stamp "$($cd.S) BUY $lot @ $entry stop $stopP (trailing after fill)" }catch{ Stamp "$($cd.S) order err $($_.ErrorDetails.Message)" }
+    $ref=$cd.Price; $lot=[int][math]::Floor($perBudget/$ref); if($lot -lt 1){ continue }
+    $stopDist=[math]::Max($INIT_STOP_PCT*$ref,1.5*$cd.Atr)
+    $tp=[math]::Round($ref*(1+$CEIL_PCT),2); $stopP=[math]::Round($ref-$stopDist,2)
+    try{ PlaceBracket $cd.S $lot $tp $stopP; Stamp "$($cd.S) MARKET BUY $lot (~$ref) stop $stopP tp $tp (trailing after fill)" }catch{ Stamp "$($cd.S) order err $($_.ErrorDetails.Message)" }
   }
 }
