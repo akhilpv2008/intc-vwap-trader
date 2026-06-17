@@ -75,7 +75,7 @@ foreach($s in $syms){
       $sells=@(Invoke-RestMethod -Uri "$base/v2/orders?status=all&symbols=$s&limit=20&direction=desc&nested=true" -Headers $h | Where-Object { $_.side -eq "sell" -and $live -contains $_.status })
       $curStop=0; foreach($o in $sells){ if($o.type -eq "stop" -and $o.stop_price){ $curStop=[double]$o.stop_price }; foreach($l in $o.legs){ if($l.type -eq "stop" -and $l.stop_price){ $curStop=[double]$l.stop_price } } }
       if($sells.Count -eq 0){ try{ PlaceOCO $s $qty $ceil $floor; Stamp "$s protect OCO stop $floor" }catch{ Stamp "$s oco err $($_.ErrorDetails.Message)" } }
-      elseif($desired -gt $curStop+0.02){ CancelSells $s; try{ PlaceOCO $s $qty $ceil $desired; Stamp "$s TRAIL $curStop->$desired (price $price)" }catch{ Stamp "$s trail err $($_.ErrorDetails.Message)" } }
+      elseif($desired -gt $curStop+0.02){ CancelSells $s; Start-Sleep -Milliseconds 1500; try{ PlaceOCO $s $qty $ceil $desired; Stamp "$s TRAIL $curStop->$desired (price $price)" }catch{ Stamp "$s trail err (will retry next run) $($_.ErrorDetails.Message)"; try{ Start-Sleep -Milliseconds 1500; PlaceOCO $s $qty $ceil $desired; Stamp "$s TRAIL retry ok -> $desired" }catch{ } } }
       else{ Stamp "$s HOLD $qty stop $curStop (price $price)" }
       $held++; continue
     }
