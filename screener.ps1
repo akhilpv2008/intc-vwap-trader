@@ -14,12 +14,12 @@ try{
   foreach($g in $m.gainers){ $cands += [pscustomobject]@{Sym=$g.symbol; Price=[double]$g.price; Pct=[double]$g.percent_change} }
 }catch{}
 $rows=@()
-foreach($c in ($cands | Where-Object { $_.Price -ge 10 -and $_.Price -le 320 -and $_.Pct -ge 3 -and $_.Pct -le 20 -and $exclude -notcontains $_.Sym })){
+foreach($c in ($cands | Where-Object { $_.Price -ge 8 -and $_.Price -le 320 -and $_.Pct -ge 2 -and $_.Pct -le 25 -and $exclude -notcontains $_.Sym })){
   try{
     # liquidity check via today's/last daily volume
     $d=(Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$($c.Sym)/bars?timeframe=1Day&limit=1&feed=iex" -Headers $h).bars
     $vol = if($d -and $d.Count){ [double]$d[-1].v } else { 0 }
-    if($vol -lt 3000000){ continue }   # require >3M shares (liquid)
+    if($vol -lt 2000000){ continue }   # require >2M shares (liquid)
     $score=[math]::Round($c.Pct * [math]::Log10([math]::Max($vol,1)),2)
     $rows+=[pscustomobject]@{Sym=$c.Sym;Price=$c.Price;Pct=[math]::Round($c.Pct,2);VolM=[math]::Round($vol/1e6,1);Score=$score}
   }catch{}
@@ -30,7 +30,7 @@ $ranked | Format-Table -AutoSize | Out-String | Write-Host
 # FALLBACK: if fewer than 3 liquid movers today, fill from the volatile-liquid watchlist
 if($ranked.Count -lt 3){
   Write-Host "only $($ranked.Count) liquid movers - filling from volatility watchlist"
-  $watch="AMD","NVDA","AAPL","AMZN","INTC","PLTR","SOFI","F","BAC","MU","AAL","CCL","NIO","COIN","RIVN","DKNG"
+  $watch="AMD","NVDA","AAPL","AMZN","INTC","PLTR","SOFI","F","BAC","MU","AAL","CCL","NIO","COIN","RIVN","DKNG","MARA","RIOT","HOOD","SNAP","UBER","BABA","NKE","DIS","SHOP","COIN","PYPL","ROKU","AFRM","DAL","CVNA","XYZ"
   $dstart=(Get-Date).ToUniversalTime().AddDays(-7).ToString("yyyy-MM-ddT00:00:00Z")
   $have=$ranked | ForEach-Object { $_.Sym }
   $fb=@()

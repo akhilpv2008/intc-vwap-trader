@@ -4,24 +4,24 @@
     "picks":  [
                   {
                       "symbol":  "INTC",
-                      "price":  120.925,
-                      "pct":  6.58,
-                      "vol_m":  0,
-                      "score":  6.58
+                      "price":  119.86,
+                      "pct":  6.84,
+                      "vol_m":  0.1,
+                      "score":  6.84
                   },
                   {
-                      "symbol":  "RIVN",
-                      "price":  16.12,
-                      "pct":  5.41,
-                      "vol_m":  0,
-                      "score":  5.41
+                      "symbol":  "MARA",
+                      "price":  14.745,
+                      "pct":  6.53,
+                      "vol_m":  0.1,
+                      "score":  6.53
                   },
                   {
-                      "symbol":  "CCL",
-                      "price":  31.33,
-                      "pct":  4.54,
-                      "vol_m":  0,
-                      "score":  4.54
+                      "symbol":  "HOOD",
+                      "price":  100.045,
+                      "pct":  6.49,
+                      "vol_m":  0.1,
+                      "score":  6.49
                   }
               ]
 }
