@@ -127,6 +127,7 @@ foreach($s in $syms){
     $vwap=[math]::Round($cumPV/$cumV,2)
     $closes=@($all | ForEach-Object { [double]$_.c })
     $rsiNow=Rsi $closes 14; $rsiPrev=Rsi ($closes[0..($closes.Count-2)]) 14
+    $e9=EmaSeries $closes 9; $e21=EmaSeries $closes 21
     $e12=EmaSeries $closes 12; $e26=EmaSeries $closes 26
     $macd=@(); for($i=0;$i -lt $closes.Count;$i++){ $macd+=($e12[$i]-$e26[$i]) }; $sig=EmaSeries $macd 9
     $macdNow=$macd[-1]; $sigNow=$sig[-1]
@@ -175,8 +176,10 @@ foreach($s in $syms){
     if(-not $lbBull){ Stamp "$s candle bearish"; continue }
     if(-not ($rsiNow -gt 40 -and $rsiNow -lt 72 -and $rsiNow -ge $rsiPrev)){ Stamp "$s RSI $rsiNow no"; continue }
     if(-not ($macdNow -gt $sigNow)){ Stamp "$s MACD<signal"; continue }
+    if($e9[-1] -le $e21[-1]){ Stamp "$s EMA9<EMA21 - downtrend, skip"; continue }   # 9/21 EMA trend filter
+    $score=[math]::Round(($price-$vwap)/$vwap*100,2)
+    if($score -gt 4.0){ Stamp "$s too extended +${score}% above VWAP - missed the move, skip"; continue }  # late-entry filter
     if($noNewEntries){ Stamp "$s skip - no new entries after 3PM ET"; continue }
-    $score=[math]::Round(($price-$vwap)/$vwap*100,2)   # rank by strength above VWAP
     $cands+=[pscustomobject]@{S=$s;Price=$price;Atr=$atr5;Rsi=$rsiNow;Score=$score}
     Stamp "$s CANDIDATE OK (RSI $rsiNow, +$score% vs VWAP)"
   }catch{ Stamp "$s err $($_.Exception.Message)" }
