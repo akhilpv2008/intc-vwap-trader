@@ -1,0 +1,73 @@
+name: EOD Flatten
+
+on:
+  schedule:
+    - cron: '50 19 * * 1-5'   # 3:50 PM ET (EDT) Mon-Fri — runs on GitHub servers, laptop-off safe
+  workflow_dispatch:            # manual trigger button in GitHub UI
+
+jobs:
+  flatten:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cancel all open orders
+        run: |
+          echo "Cancelling all open orders..."
+          STATUS=$(curl -s -o /tmp/cancel_resp.json -w "%{http_code}" \
+            -X DELETE "$APCA_API_BASE_URL/v2/orders" \
+            -H "APCA-API-KEY-ID: $APCA_API_KEY_ID" \
+            -H "APCA-API-SECRET-KEY: $APCA_API_SECRET_KEY")
+          echo "Cancel orders status: $STATUS"
+          cat /tmp/cancel_resp.json || true
+        env:
+          APCA_API_BASE_URL: ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+
+      - name: Wait 2 seconds
+        run: sleep 2
+
+      - name: Close all positions
+        run: |
+          echo "Closing all positions..."
+          POSITIONS=$(curl -s "$APCA_API_BASE_URL/v2/positions" \
+            -H "APCA-API-KEY-ID: $APCA_API_KEY_ID" \
+            -H "APCA-API-SECRET-KEY: $APCA_API_SECRET_KEY")
+          echo "Open positions: $POSITIONS"
+
+          SYMBOLS=$(echo $POSITIONS | python3 -c "import sys,json; [print(p['symbol']) for p in json.load(sys.stdin)]" 2>/dev/null || true)
+
+          if [ -z "$SYMBOLS" ]; then
+            echo "Already flat — nothing to close."
+            exit 0
+          fi
+
+          for SYM in $SYMBOLS; do
+            echo "Closing $SYM..."
+            curl -s -X DELETE "$APCA_API_BASE_URL/v2/positions/$SYM" \
+              -H "APCA-API-KEY-ID: $APCA_API_KEY_ID" \
+              -H "APCA-API-SECRET-KEY: $APCA_API_SECRET_KEY"
+            echo ""
+          done
+        env:
+          APCA_API_BASE_URL: ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+
+      - name: Verify flat
+        run: |
+          sleep 2
+          POSITIONS=$(curl -s "$APCA_API_BASE_URL/v2/positions" \
+            -H "APCA-API-KEY-ID: $APCA_API_KEY_ID" \
+            -H "APCA-API-SECRET-KEY: $APCA_API_SECRET_KEY")
+          COUNT=$(echo $POSITIONS | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "?")
+          echo "Positions remaining: $COUNT"
+          if [ "$COUNT" != "0" ]; then
+            echo "WARNING: Not fully flat after close attempt!"
+            exit 1
+          fi
+          echo "SUCCESS: Account is flat."
+        env:
+          APCA_API_BASE_URL: ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
