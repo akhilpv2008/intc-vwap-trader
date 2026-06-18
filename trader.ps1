@@ -32,7 +32,7 @@ function PlaceOCO($sym,$qty,$tp,$stop){ $b=@{symbol=$sym;qty="$qty";side="sell";
 # Returns a named exit signal if candle/indicator analysis says get out now, else $null.
 # Patterns sourced from proven TA: shooting star, bearish engulfing, doji reversal,
 # VWAP cross, RSI overbought divergence, volume exhaustion.
-function CandleExitSignal($bars,$price,$vwap,$rsiNow,$rsiPrev){
+function CandleExitSignal($bars,$price,$vwap,$rsiNow,$rsiPrev,$protect=$false){
   if($bars.Count -lt 5){ return $null }
   $cb=$bars[-1]; $pb=$bars[-2]; $pb2=$bars[-3]
   $cbBull=[double]$cb.c -gt [double]$cb.o
@@ -61,8 +61,9 @@ function CandleExitSignal($bars,$price,$vwap,$rsiNow,$rsiPrev){
   # 4. VWAP CROSS BELOW: price fell below VWAP - institutional support gone, trade thesis broken
   if($price -lt $vwap){ return "BELOW-VWAP" }
 
-  # 5. RSI OVERBOUGHT + TURNING DOWN: RSI >75 and declining - momentum peaked, smart money exiting
-  if($rsiNow -gt 75 -and $rsiNow -lt $rsiPrev){ return "RSI-OVERBOUGHT-TURNING" }
+  # 5. RSI OVERBOUGHT + TURNING DOWN: in protect mode threshold drops to 70 (more sensitive)
+  $rsiThresh=if($protect){ 70 }else{ 75 }
+  if($rsiNow -gt $rsiThresh -and $rsiNow -lt $rsiPrev){ return "RSI-OVERBOUGHT-TURNING" }
 
   # 6. VOLUME EXHAUSTION: 3 consecutive declining volumes on up candles - buyers running out of fuel
   if($bars.Count -ge 5){
@@ -99,14 +100,10 @@ $acct=Invoke-RestMethod -Uri "$base/v2/account" -Headers $h
 $dayPL=[double]$acct.equity-[double]$acct.last_equity
 $killed=($dayPL -le -$MAX_DAILY_LOSS)
 if($killed){ Stamp "KILL-SWITCH day P&L $([math]::Round($dayPL,2)) - no new entries." }
-# PROFIT TARGET: day P&L >= $150 - close everything, lock in the win, done for the day
-if($dayPL -ge $DAILY_TARGET){
-  Stamp "PROFIT TARGET HIT day P&L=+$([math]::Round($dayPL,2)) - flattening all positions."
-  try{ Invoke-RestMethod -Uri "$base/v2/orders" -Method Delete -Headers $h|Out-Null }catch{}
-  Start-Sleep -Seconds 2
-  foreach($s in $syms){ $p=Pos $s; if($p -and [int]$p.qty -gt 0){ try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "closed $($p.qty) $s" }catch{} } }
-  exit 0
-}
+# PROTECT MODE: day P&L >= $150 - don't flatten, but ride winners with tighter controls + no new entries
+$protectMode=($dayPL -ge $DAILY_TARGET)
+if($protectMode){ Stamp "PROTECT MODE: day P&L=+$([math]::Round($dayPL,2)) - riding winners, tighter trail (0.5%), no new entries, hair-trigger exits." }
+if($protectMode){ $killed=$true }   # block new entries - protect the gain, don't add risk
 # EVENT BLACKOUT: no new entries during FOMC/CPI/jobs windows (still manage/flatten held)
 $evFile=Join-Path $PSScriptRoot "events.json"
 if(Test-Path $evFile){
@@ -137,7 +134,7 @@ foreach($s in $syms){
 
     if($qty -gt 0){
       # candle/indicator exit signals - 6 proven TA patterns checked every cycle
-      $exitSig=CandleExitSignal $bars $price $vwap $rsiNow $rsiPrev
+      $exitSig=CandleExitSignal $bars $price $vwap $rsiNow $rsiPrev $protectMode
       if($exitSig -and [double]$p.unrealized_pl -gt 0){
         CancelSells $s; Start-Sleep -Seconds 1
         try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "$s CANDLE-EXIT ($exitSig) profit=+$([math]::Round([double]$p.unrealized_pl,2))" }catch{ Stamp "$s candle-exit err $($_.Exception.Message)" }
@@ -151,7 +148,8 @@ foreach($s in $syms){
         continue
       }
       $entry=[double]$p.avg_entry_price
-      $trail=[math]::Max($TRAIL_PCT*$price,1.5*$atr5)
+      $trailPct=if($protectMode){ 0.005 }else{ $TRAIL_PCT }   # 0.5% in protect mode vs 1% normal
+      $trail=[math]::Max($trailPct*$price,if($protectMode){ 0.8*$atr5 }else{ 1.5*$atr5 })
       $floor=[math]::Round($entry-[math]::Max($INIT_STOP_PCT*$entry,1.5*$atr5),2)
       $desired=[math]::Round([math]::Max($price-$trail,$floor),2)
       $ceil=[math]::Round($entry*(1+$CEIL_PCT),2)
