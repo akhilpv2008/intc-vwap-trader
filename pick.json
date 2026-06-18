@@ -4,70 +4,70 @@
     "picks":  [
                   {
                       "symbol":  "HOOD",
-                      "price":  105.435,
+                      "price":  105.29,
                       "pct":  7.58,
                       "vol_m":  0.3,
                       "score":  7.58
                   },
                   {
                       "symbol":  "INTC",
-                      "price":  130.53,
+                      "price":  130.82,
                       "pct":  7.12,
                       "vol_m":  0.5,
                       "score":  7.12
                   },
                   {
                       "symbol":  "MARA",
-                      "price":  13.845,
+                      "price":  13.89,
                       "pct":  6.43,
                       "vol_m":  0.1,
                       "score":  6.43
                   },
                   {
                       "symbol":  "ROKU",
-                      "price":  137.385,
+                      "price":  137.34,
                       "pct":  5.99,
                       "vol_m":  0.1,
                       "score":  5.99
                   },
                   {
                       "symbol":  "AFRM",
-                      "price":  72.995,
+                      "price":  73.15,
                       "pct":  5.96,
                       "vol_m":  0,
                       "score":  5.96
                   },
                   {
                       "symbol":  "RIOT",
-                      "price":  27.815,
+                      "price":  27.94,
                       "pct":  5.5,
                       "vol_m":  0.1,
                       "score":  5.5
                   },
                   {
                       "symbol":  "RIVN",
-                      "price":  16.17,
-                      "pct":  5.46,
+                      "price":  16.215,
+                      "pct":  5.49,
                       "vol_m":  0.2,
-                      "score":  5.46
+                      "score":  5.49
                   },
                   {
                       "symbol":  "CVNA",
-                      "price":  65.765,
+                      "price":  65.715,
                       "pct":  5.42,
                       "vol_m":  0.1,
                       "score":  5.42
                   },
                   {
                       "symbol":  "DKNG",
-                      "price":  25.82,
+                      "price":  26.09,
                       "pct":  5.02,
                       "vol_m":  0.2,
                       "score":  5.02
                   },
                   {
                       "symbol":  "SOFI",
-                      "price":  17.625,
+                      "price":  17.695,
                       "pct":  4.88,
                       "vol_m":  0.2,
                       "score":  4.88

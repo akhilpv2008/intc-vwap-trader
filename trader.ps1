@@ -40,7 +40,7 @@ if($minsToClose -le $FLATTEN_MIN){
   # RELIABLE flatten: cancel ALL open orders account-wide, then close each pick position at market
   try{ Invoke-RestMethod -Uri "$base/v2/orders" -Method Delete -Headers $h|Out-Null }catch{}
   Start-Sleep -Seconds 2
-  foreach($s in $syms){ $p=Pos $s; if($p -and [int]$p.qty -gt 0){ try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "FLATTEN closed $($p.qty) $s" }catch{ Stamp "flatten err $s: $($_.ErrorDetails.Message)" } } }
+  foreach($s in $syms){ $p=Pos $s; if($p -and [int]$p.qty -gt 0){ try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "FLATTEN closed $($p.qty) $s" }catch{ Stamp "flatten err ${s}: $($_.ErrorDetails.Message)" } } }
   Stamp "end-of-day flatten done (cancel-all + close-position)."; exit 0
 }
 
@@ -83,10 +83,11 @@ foreach($s in $syms){
       $desired=[math]::Round([math]::Max($price-$trail,$floor),2)
       $ceil=[math]::Round($entry*(1+$CEIL_PCT),2)
       $live="new","held","accepted","partially_filled","pending_new"
-      $sells=@(Invoke-RestMethod -Uri "$base/v2/orders?status=all&symbols=$s&limit=20&direction=desc&nested=true" -Headers $h | Where-Object { $_.side -eq "sell" -and $live -contains $_.status })
+      # scan ALL live orders + their legs (bracket stop sits as a leg under the BUY parent)
+      $allo=@(Invoke-RestMethod -Uri "$base/v2/orders?status=all&symbols=$s&limit=30&direction=desc&nested=true" -Headers $h)
       $curStop=0; $stopId=$null
-      foreach($o in $sells){ if($o.type -eq "stop" -and $o.stop_price){ $curStop=[double]$o.stop_price; $stopId=$o.id }; foreach($l in $o.legs){ if($l.type -eq "stop" -and $l.stop_price){ $curStop=[double]$l.stop_price; $stopId=$l.id } } }
-      if(-not $stopId){ try{ PlaceOCO $s $qty $ceil $floor; Stamp "$s protect OCO stop $floor" }catch{ Stamp "$s oco err $($_.ErrorDetails.Message)" } }
+      foreach($o in $allo){ if($o.type -eq "stop" -and $o.side -eq "sell" -and ($live -contains $o.status) -and $o.stop_price){ $curStop=[double]$o.stop_price; $stopId=$o.id }; foreach($l in $o.legs){ if($l.type -eq "stop" -and $l.side -eq "sell" -and ($live -contains $l.status) -and $l.stop_price){ $curStop=[double]$l.stop_price; $stopId=$l.id } } }
+      if(-not $stopId){ try{ PlaceOCO $s $qty $ceil $floor; Stamp "$s protect OCO stop $floor" }catch{ Stamp "$s already protected (bracket); skip re-arm" } }
       elseif($desired -gt $curStop+0.02){ $pb=@{stop_price="$desired"}|ConvertTo-Json; try{ Invoke-RestMethod -Uri "$base/v2/orders/$stopId" -Method Patch -Headers $h -Body $pb -ContentType "application/json"|Out-Null; Stamp "$s TRAIL $curStop->$desired (price $price)" }catch{ Stamp "$s trail patch err $($_.ErrorDetails.Message)" } }
       else{ Stamp "$s HOLD $qty stop $curStop (price $price)" }
       $held++; continue
