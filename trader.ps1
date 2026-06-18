@@ -11,6 +11,7 @@ $TOTAL_BUDGET=10000.0
 $MAX_POS=3                      # hold at most 3 positions at once
 $perBudget=[math]::Round($TOTAL_BUDGET/$MAX_POS,2)
 $MAX_DAILY_LOSS=300.0
+$DAILY_TARGET=150.0            # lock in the day when total P&L (realized+unrealized) hits this
 $TRAIL_PCT=0.010; $CEIL_PCT=0.04; $INIT_STOP_PCT=0.010
 $FLATTEN_MIN=5
 $etNow=[System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([datetime]::UtcNow,"Eastern Standard Time")
@@ -51,6 +52,14 @@ $acct=Invoke-RestMethod -Uri "$base/v2/account" -Headers $h
 $dayPL=[double]$acct.equity-[double]$acct.last_equity
 $killed=($dayPL -le -$MAX_DAILY_LOSS)
 if($killed){ Stamp "KILL-SWITCH day P&L $([math]::Round($dayPL,2)) - no new entries." }
+# PROFIT TARGET: day P&L >= $150 - close everything, lock in the win, done for the day
+if($dayPL -ge $DAILY_TARGET){
+  Stamp "PROFIT TARGET HIT day P&L=+$([math]::Round($dayPL,2)) - flattening all positions."
+  try{ Invoke-RestMethod -Uri "$base/v2/orders" -Method Delete -Headers $h|Out-Null }catch{}
+  Start-Sleep -Seconds 2
+  foreach($s in $syms){ $p=Pos $s; if($p -and [int]$p.qty -gt 0){ try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "closed $($p.qty) $s" }catch{} } }
+  exit 0
+}
 # EVENT BLACKOUT: no new entries during FOMC/CPI/jobs windows (still manage/flatten held)
 $evFile=Join-Path $PSScriptRoot "events.json"
 if(Test-Path $evFile){
@@ -80,6 +89,24 @@ foreach($s in $syms){
     $p=Pos $s; $qty= if($p){ [int]$p.qty } else { 0 }
 
     if($qty -gt 0){
+      # candle-pattern exits (checked every cycle while holding)
+      if($bars.Count -ge 3){
+        $cb=$bars[-1]; $pb=$bars[-2]
+        $cbBull=([double]$cb.c -gt [double]$cb.o); $cbBody=[math]::Abs([double]$cb.o-[double]$cb.c); $cbVol=[double]$cb.v
+        $pbBull=([double]$pb.c -gt [double]$pb.o); $pbBody=[math]::Abs([double]$pb.o-[double]$pb.c)
+        $avgB=(($bars[-10..-1]|ForEach-Object{[math]::Abs([double]$_.o-[double]$_.c)})|Measure-Object -Average).Average
+        $avgV=(($bars[-10..-1]|ForEach-Object{[double]$_.v})|Measure-Object -Average).Average
+        # big green spike: body > 2x avg AND volume > 1.5x avg - sell into the momentum peak
+        $bigGreenSpike=($cbBull -and $cbBody -gt 2.0*$avgB -and $cbVol -gt 1.5*$avgV)
+        # reversal: previous candle was a big green, current candle turned red - exhaustion
+        $reversalAfterGreen=(-not $cbBull -and $pbBull -and $pbBody -gt 1.5*$avgB)
+        if(($bigGreenSpike -or $reversalAfterGreen) -and [double]$p.unrealized_pl -gt 0){
+          $reason=if($bigGreenSpike){"BIG-GREEN-SPIKE"}else{"REVERSAL-after-green"}
+          CancelSells $s; Start-Sleep -Seconds 1
+          try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "$s CANDLE-EXIT ($reason) profit=+$([math]::Round([double]$p.unrealized_pl,2))" }catch{ Stamp "$s candle-exit err $($_.Exception.Message)" }
+          continue
+        }
+      }
       # first-hour exit: at 10:30 AM ET take profit and free the slot for a fresh afternoon entry
       if($isFirstHourExit -and [double]$p.unrealized_pl -gt 0){
         CancelSells $s; Start-Sleep -Seconds 1
