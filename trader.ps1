@@ -13,6 +13,9 @@ $perBudget=[math]::Round($TOTAL_BUDGET/$MAX_POS,2)
 $MAX_DAILY_LOSS=300.0
 $TRAIL_PCT=0.010; $CEIL_PCT=0.04; $INIT_STOP_PCT=0.010
 $FLATTEN_MIN=5
+$etNow=[System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([datetime]::UtcNow,"Eastern Standard Time")
+$isFirstHourExit=($etNow.Hour -eq 10 -and $etNow.Minute -ge 30)   # 10:30-10:59 AM ET: take profit on morning holds
+$noNewEntries=($etNow.Hour -ge 15)                                   # 3:00 PM ET+: no new entries, let EOD flatten clean up
 
 function Stamp($m){ Write-Host ("{0}  {1}" -f (Get-Date -Format 'u'),$m) }
 function OpenSells($sym){ @(Invoke-RestMethod -Uri "$base/v2/orders?status=open&symbols=$sym" -Headers $h | Where-Object { $_.side -eq "sell" }) }
@@ -77,6 +80,12 @@ foreach($s in $syms){
     $p=Pos $s; $qty= if($p){ [int]$p.qty } else { 0 }
 
     if($qty -gt 0){
+      # first-hour exit: at 10:30 AM ET take profit and free the slot for a fresh afternoon entry
+      if($isFirstHourExit -and [double]$p.unrealized_pl -gt 0){
+        CancelSells $s; Start-Sleep -Seconds 1
+        try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "$s FIRST-HOUR-EXIT profit=+$([math]::Round([double]$p.unrealized_pl,2))" }catch{ Stamp "$s first-hour-exit err $($_.Exception.Message)" }
+        continue
+      }
       $entry=[double]$p.avg_entry_price
       $trail=[math]::Max($TRAIL_PCT*$price,1.5*$atr5)
       $floor=[math]::Round($entry-[math]::Max($INIT_STOP_PCT*$entry,1.5*$atr5),2)
@@ -104,6 +113,7 @@ foreach($s in $syms){
     if(-not $lbBull){ Stamp "$s candle bearish"; continue }
     if(-not ($rsiNow -gt 40 -and $rsiNow -lt 72 -and $rsiNow -ge $rsiPrev)){ Stamp "$s RSI $rsiNow no"; continue }
     if(-not ($macdNow -gt $sigNow)){ Stamp "$s MACD<signal"; continue }
+    if($noNewEntries){ Stamp "$s skip - no new entries after 3PM ET"; continue }
     $score=[math]::Round(($price-$vwap)/$vwap*100,2)   # rank by strength above VWAP
     $cands+=[pscustomobject]@{S=$s;Price=$price;Atr=$atr5;Rsi=$rsiNow;Score=$score}
     Stamp "$s CANDIDATE OK (RSI $rsiNow, +$score% vs VWAP)"
