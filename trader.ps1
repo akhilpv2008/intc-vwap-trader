@@ -29,6 +29,53 @@ function Rsi($closes,$period=14){ if($closes.Count -le $period){ return 50 } ; $
 function PlaceBracket($sym,$lot,$tp,$stop){ $b=@{symbol=$sym;qty="$lot";side="buy";type="market";time_in_force="day";order_class="bracket";take_profit=@{limit_price="$tp"};stop_loss=@{stop_price="$stop"}}|ConvertTo-Json -Depth 5; Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $b -ContentType "application/json"|Out-Null }
 function PlaceOCO($sym,$qty,$tp,$stop){ $b=@{symbol=$sym;qty="$qty";side="sell";type="limit";time_in_force="gtc";order_class="oco";take_profit=@{limit_price="$tp"};stop_loss=@{stop_price="$stop"}}|ConvertTo-Json -Depth 5; Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $b -ContentType "application/json"|Out-Null }
 
+# Returns a named exit signal if candle/indicator analysis says get out now, else $null.
+# Patterns sourced from proven TA: shooting star, bearish engulfing, doji reversal,
+# VWAP cross, RSI overbought divergence, volume exhaustion.
+function CandleExitSignal($bars,$price,$vwap,$rsiNow,$rsiPrev){
+  if($bars.Count -lt 5){ return $null }
+  $cb=$bars[-1]; $pb=$bars[-2]; $pb2=$bars[-3]
+  $cbBull=[double]$cb.c -gt [double]$cb.o
+  $cbO=[double]$cb.o; $cbC=[double]$cb.c; $cbH=[double]$cb.h; $cbL=[double]$cb.l
+  $cbBody=[math]::Abs($cbC-$cbO)
+  $cbUpperWick=$cbH-[math]::Max($cbO,$cbC)
+  $cbVol=[double]$cb.v
+  $pbBull=[double]$pb.c -gt [double]$pb.o
+  $pbO=[double]$pb.o; $pbC=[double]$pb.c
+  $pbBody=[math]::Abs($pbC-$pbO)
+  $avgBody=(($bars[-8..-1]|ForEach-Object{[math]::Abs([double]$_.o-[double]$_.c)})|Measure-Object -Average).Average
+  $avgVol=(($bars[-8..-1]|ForEach-Object{[double]$_.v})|Measure-Object -Average).Average
+  if($avgBody -lt 0.001){ $avgBody=0.001 }
+
+  # 1. SHOOTING STAR: long upper wick (>2x body), tiny body, high volume - classic momentum exhaustion top
+  if($cbUpperWick -gt 2.0*[math]::Max($cbBody,0.01) -and $cbBody -lt 0.6*$avgBody -and $cbVol -gt 1.2*$avgVol -and $pbBull){ return "SHOOTING-STAR" }
+
+  # 2. BEARISH ENGULFING: bearish candle fully swallows the prior bullish candle - sellers overwhelmed buyers
+  if(-not $cbBull -and $pbBull -and $cbO -gt $pbC -and $cbC -lt $pbO -and $cbBody -gt $pbBody){ return "BEARISH-ENGULFING" }
+
+  # 3. DOJI REVERSAL: near-zero body (indecision) after an uptrend, confirmed by next red candle
+  $pbDoji=($pbBody -lt 0.15*$avgBody)
+  $pb2Bull=([double]$pb2.c -gt [double]$pb2.o)
+  if($pbDoji -and -not $cbBull -and $pb2Bull){ return "DOJI-REVERSAL" }
+
+  # 4. VWAP CROSS BELOW: price fell below VWAP - institutional support gone, trade thesis broken
+  if($price -lt $vwap){ return "BELOW-VWAP" }
+
+  # 5. RSI OVERBOUGHT + TURNING DOWN: RSI >75 and declining - momentum peaked, smart money exiting
+  if($rsiNow -gt 75 -and $rsiNow -lt $rsiPrev){ return "RSI-OVERBOUGHT-TURNING" }
+
+  # 6. VOLUME EXHAUSTION: 3 consecutive declining volumes on up candles - buyers running out of fuel
+  if($bars.Count -ge 5){
+    $last3=@($bars[-3..-1])
+    $allUp=($last3 | Where-Object { [double]$_.c -gt [double]$_.o }).Count -eq 3
+    $volFading=([double]$last3[2].v -lt [double]$last3[1].v -and [double]$last3[1].v -lt [double]$last3[0].v)
+    $volLow=([double]$last3[2].v -lt 0.55*$avgVol)
+    if($allUp -and $volFading -and $volLow){ return "VOLUME-EXHAUSTION" }
+  }
+
+  return $null
+}
+
 $clock=Invoke-RestMethod -Uri "$base/v2/clock" -Headers $h
 if(-not $clock.is_open){ Stamp "market closed."; exit 0 }
 $pickFile=Join-Path $PSScriptRoot "pick.json"
@@ -89,24 +136,14 @@ foreach($s in $syms){
     $p=Pos $s; $qty= if($p){ [int]$p.qty } else { 0 }
 
     if($qty -gt 0){
-      # candle-pattern exits (checked every cycle while holding)
-      if($bars.Count -ge 3){
-        $cb=$bars[-1]; $pb=$bars[-2]
-        $cbBull=([double]$cb.c -gt [double]$cb.o); $cbBody=[math]::Abs([double]$cb.o-[double]$cb.c); $cbVol=[double]$cb.v
-        $pbBull=([double]$pb.c -gt [double]$pb.o); $pbBody=[math]::Abs([double]$pb.o-[double]$pb.c)
-        $avgB=(($bars[-10..-1]|ForEach-Object{[math]::Abs([double]$_.o-[double]$_.c)})|Measure-Object -Average).Average
-        $avgV=(($bars[-10..-1]|ForEach-Object{[double]$_.v})|Measure-Object -Average).Average
-        # big green spike: body > 2x avg AND volume > 1.5x avg - sell into the momentum peak
-        $bigGreenSpike=($cbBull -and $cbBody -gt 2.0*$avgB -and $cbVol -gt 1.5*$avgV)
-        # reversal: previous candle was a big green, current candle turned red - exhaustion
-        $reversalAfterGreen=(-not $cbBull -and $pbBull -and $pbBody -gt 1.5*$avgB)
-        if(($bigGreenSpike -or $reversalAfterGreen) -and [double]$p.unrealized_pl -gt 0){
-          $reason=if($bigGreenSpike){"BIG-GREEN-SPIKE"}else{"REVERSAL-after-green"}
-          CancelSells $s; Start-Sleep -Seconds 1
-          try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "$s CANDLE-EXIT ($reason) profit=+$([math]::Round([double]$p.unrealized_pl,2))" }catch{ Stamp "$s candle-exit err $($_.Exception.Message)" }
-          continue
-        }
+      # candle/indicator exit signals - 6 proven TA patterns checked every cycle
+      $exitSig=CandleExitSignal $bars $price $vwap $rsiNow $rsiPrev
+      if($exitSig -and [double]$p.unrealized_pl -gt 0){
+        CancelSells $s; Start-Sleep -Seconds 1
+        try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h|Out-Null; Stamp "$s CANDLE-EXIT ($exitSig) profit=+$([math]::Round([double]$p.unrealized_pl,2))" }catch{ Stamp "$s candle-exit err $($_.Exception.Message)" }
+        continue
       }
+      if($exitSig){ Stamp "$s signal=$exitSig but position not profitable - holding for stop" }
       # first-hour exit: at 10:30 AM ET take profit and free the slot for a fresh afternoon entry
       if($isFirstHourExit -and [double]$p.unrealized_pl -gt 0){
         CancelSells $s; Start-Sleep -Seconds 1
