@@ -1,0 +1,21 @@
+name: flatten-eod
+# Guaranteed end-of-day liquidation so NO overnight holds, even with the laptop off.
+# Single daily cron is far more reliable than the every-5-min trader cron.
+on:
+  schedule:
+    - cron: '54 19 * * 1-5'   # 3:54pm ET (19:54 UTC) - just before the 4pm close
+    - cron: '58 19 * * 1-5'   # 3:58pm ET backup run
+  workflow_dispatch: {}
+concurrency: { group: flatten-eod, cancel-in-progress: false }
+jobs:
+  flatten:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Liquidate everything before close
+        shell: pwsh
+        env:
+          APCA_API_BASE_URL:   ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID:     ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+        run: pwsh ./flatten.ps1
