@@ -1,0 +1,33 @@
+name: market-runner
+# ONE long-running job per day = reliable laptop-off trading (replaces the flaky every-5-min crons).
+# Starts near the open and loops internally all session: screen every ~15 min, trade every ~60s.
+# Public repo -> GitHub Actions minutes are free & unlimited.
+on:
+  schedule:
+    - cron: '31 13 * * 1-5'   # ~9:31 ET start (single daily start = far more reliable than */5)
+  workflow_dispatch: {}
+concurrency: { group: market-runner, cancel-in-progress: true }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the session
+        shell: pwsh
+        env:
+          APCA_API_BASE_URL:   ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID:     ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+        run: |
+          $h=@{ "APCA-API-KEY-ID"=$env:APCA_API_KEY_ID; "APCA-API-SECRET-KEY"=$env:APCA_API_SECRET_KEY }
+          $base=$env:APCA_API_BASE_URL
+          $end=(Get-Date).AddMinutes(350)
+          $lastScreen=(Get-Date).AddMinutes(-99)
+          while((Get-Date) -lt $end){
+            try{ $c=Invoke-RestMethod -Uri "$base/v2/clock" -Headers $h }catch{ Start-Sleep 20; continue }
+            if(-not $c.is_open){ Write-Host "market closed - exiting runner"; break }
+            if(((Get-Date)-$lastScreen).TotalMinutes -ge 15){ try{ pwsh ./screener.ps1 }catch{ Write-Host "screen err $_" }; $lastScreen=Get-Date }
+            try{ pwsh ./trader.ps1 }catch{ Write-Host "trade err $_" }
+            Start-Sleep -Seconds 60
+          }
