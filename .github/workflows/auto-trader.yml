@@ -1,7 +1,7 @@
 name: auto-trader
 on:
   schedule:
-    - cron: '*/5 13-20 * * 1-5'   # every ~5 min, market hours; waits for the day's pick
+    - cron: '*/5 13-20 * * 1-5'   # every ~5 min, market hours
   workflow_dispatch: {}
 concurrency: { group: auto-trader, cancel-in-progress: false }
 jobs:
@@ -9,6 +9,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Syntax check trader.ps1
+        shell: pwsh
+        run: |
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile("./trader.ps1", [ref]$null, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            foreach ($e in $errors) { Write-Error "Line $($e.Extent.StartLineNumber): $($e.Message)" }
+            exit 1
+          }
+          Write-Host "Syntax OK"
       - name: Trade the day's pick
         shell: pwsh
         env:
