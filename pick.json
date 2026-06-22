@@ -1,76 +1,27 @@
-{
-  "date": "2026-06-22",
-  "strategy": "momentum+trailing",
-  "picks": [
-    {
-      "symbol": "HOOD",
-      "price": 111.915,
-      "pct": 7.16,
-      "vol_m": 0.2,
-      "score": 7.16
-    },
-    {
-      "symbol": "MARA",
-      "price": 16.235,
-      "pct": 6.63,
-      "vol_m": 0.4,
-      "score": 6.63
-    },
-    {
-      "symbol": "INTC",
-      "price": 138.02,
-      "pct": 5.83,
-      "vol_m": 0.5,
-      "score": 5.83
-    },
-    {
-      "symbol": "CVNA",
-      "price": 68.405,
-      "pct": 5.56,
-      "vol_m": 0.0,
-      "score": 5.56
-    },
-    {
-      "symbol": "AFRM",
-      "price": 75.19,
-      "pct": 5.52,
-      "vol_m": 0.0,
-      "score": 5.52
-    },
-    {
-      "symbol": "RIOT",
-      "price": 30.23,
-      "pct": 5.07,
-      "vol_m": 0.1,
-      "score": 5.07
-    },
-    {
-      "symbol": "COIN",
-      "price": 175.01,
-      "pct": 4.89,
-      "vol_m": 0.1,
-      "score": 4.89
-    },
-    {
-      "symbol": "DKNG",
-      "price": 26.14,
-      "pct": 4.84,
-      "vol_m": 0.0,
-      "score": 4.84
-    },
-    {
-      "symbol": "SOFI",
-      "price": 17.96,
-      "pct": 4.64,
-      "vol_m": 0.3,
-      "score": 4.64
-    },
-    {
-      "symbol": "RIVN",
-      "price": 15.865,
-      "pct": 4.28,
-      "vol_m": 0.2,
-      "score": 4.28
-    }
-  ]
+﻿{
+    "picks":  [
+                  {
+                      "symbol":  "MARA"
+                  },
+                  {
+                      "symbol":  "SMCI"
+                  },
+                  {
+                      "symbol":  "COIN"
+                  },
+                  {
+                      "symbol":  "INTC"
+                  },
+                  {
+                      "symbol":  "HOOD"
+                  },
+                  {
+                      "symbol":  "AFRM"
+                  },
+                  {
+                      "symbol":  "CVNA"
+                  }
+              ],
+    "updated":  "2026-06-22T09:05:19Z",
+    "note":  "Agent-curated 2026-06-22: SMCI/MARA/COIN on semiconductor+crypto wave. Removed RIOT/RIVN/SOFI/DKNG (flat/down). MU earnings Wed Jun24 blackout."
 }
