@@ -150,7 +150,8 @@ foreach($s in $syms){
       }
       $entry=[double]$p.avg_entry_price
       $trailPct=if($protectMode){ 0.005 }else{ $TRAIL_PCT }   # 0.5% in protect mode vs 1% normal
-      $trail=[math]::Max($trailPct*$price,if($protectMode){ 0.8*$atr5 }else{ 1.5*$atr5 })
+      $minTrail=if($protectMode){ 0.8*$atr5 }else{ 1.5*$atr5 }
+      $trail=[math]::Max($trailPct*$price,$minTrail)
       $floor=[math]::Round($entry-[math]::Max($INIT_STOP_PCT*$entry,1.5*$atr5),2)
       $desired=[math]::Round([math]::Max($price-$trail,$floor),2)
       $ceil=[math]::Round($entry*(1+$CEIL_PCT),2)
