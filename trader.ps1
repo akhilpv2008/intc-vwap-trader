@@ -120,8 +120,7 @@ foreach($s in $syms){
     $start=(Get-Date).ToUniversalTime().AddDays(-5).ToString("yyyy-MM-ddT00:00:00Z")
     $all=(Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=5Min&start=$start&limit=600&feed=iex" -Headers $h).bars
     if(-not $all -or $all.Count -lt 40){ Stamp "$s insufficient history"; continue }
-    $lastBarT=if($all.Count -gt 0){ $all[-1].t }else{ "none" }
-    $bars=@($all | Where-Object { $_.t -like "$today*" }); if($bars.Count -lt 4){ Stamp "$s only $($bars.Count) bars today (total=$($all.Count) last=$lastBarT today=$today) - waiting"; continue }
+    $bars=@($all | Where-Object { ([datetime]$_.t).ToUniversalTime().ToString("yyyy-MM-dd") -eq $today }); if($bars.Count -lt 4){ Stamp "$s only $($bars.Count) bars today - waiting"; continue }
     $price=[double](Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$s/trades/latest" -Headers $h).trade.p
     $atr5=(($bars[-10..-1]|ForEach-Object{[double]$_.h-[double]$_.l})|Measure-Object -Average).Average
     $cumPV=0.0;$cumV=0.0; foreach($b in $bars){ $tp=([double]$b.h+[double]$b.l+[double]$b.c)/3; $cumPV+=$tp*[double]$b.v; $cumV+=[double]$b.v }
