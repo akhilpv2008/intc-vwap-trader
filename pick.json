@@ -1,12 +1,12 @@
 {
-    "date":  "2026-06-23",
-    "strategy":  "tqqq-sqqq-directional",
-    "picks":  [
-                  {
-                      "symbol":  "TQQQ"
-                  },
-                  {
-                      "symbol":  "SQQQ"
-                  }
-              ]
+  "date": "2026-06-23",
+  "strategy": "tqqq-sqqq-directional",
+  "picks": [
+    {
+      "symbol": "TQQQ"
+    },
+    {
+      "symbol": "SQQQ"
+    }
+  ]
 }
