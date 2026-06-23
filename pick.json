@@ -1,76 +1,12 @@
 {
-  "date": "2026-06-22",
-  "strategy": "momentum+trailing",
-  "picks": [
-    {
-      "symbol": "HOOD",
-      "price": 105.76,
-      "pct": 7.54,
-      "vol_m": 1.0,
-      "score": 7.54
-    },
-    {
-      "symbol": "MARA",
-      "price": 14.85,
-      "pct": 6.89,
-      "vol_m": 2.9,
-      "score": 6.89
-    },
-    {
-      "symbol": "AFRM",
-      "price": 72.2,
-      "pct": 5.87,
-      "vol_m": 0.1,
-      "score": 5.87
-    },
-    {
-      "symbol": "INTC",
-      "price": 140.99,
-      "pct": 5.83,
-      "vol_m": 5.3,
-      "score": 5.83
-    },
-    {
-      "symbol": "CVNA",
-      "price": 66.67,
-      "pct": 5.81,
-      "vol_m": 0.4,
-      "score": 5.81
-    },
-    {
-      "symbol": "COIN",
-      "price": 164.86,
-      "pct": 5.29,
-      "vol_m": 0.2,
-      "score": 5.29
-    },
-    {
-      "symbol": "RIOT",
-      "price": 28.65,
-      "pct": 5.26,
-      "vol_m": 1.0,
-      "score": 5.26
-    },
-    {
-      "symbol": "RIVN",
-      "price": 15.09,
-      "pct": 5.02,
-      "vol_m": 1.8,
-      "score": 5.02
-    },
-    {
-      "symbol": "DKNG",
-      "price": 25.625,
-      "pct": 5.02,
-      "vol_m": 0.5,
-      "score": 5.02
-    },
-    {
-      "symbol": "SOFI",
-      "price": 17.1,
-      "pct": 4.99,
-      "vol_m": 1.6,
-      "score": 4.99
-    }
-  ]
+    "date":  "2026-06-23",
+    "strategy":  "tqqq-sqqq-directional",
+    "picks":  [
+                  {
+                      "symbol":  "TQQQ"
+                  },
+                  {
+                      "symbol":  "SQQQ"
+                  }
+              ]
 }

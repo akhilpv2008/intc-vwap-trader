@@ -8,7 +8,7 @@ $base=$env:APCA_API_BASE_URL; if(-not $base){ $base="https://paper-api.alpaca.ma
 $h=@{ "APCA-API-KEY-ID"=$key; "APCA-API-SECRET-KEY"=$sec }
 
 $TOTAL_BUDGET=10000.0
-$MAX_POS=3                      # hold at most 3 positions at once
+$MAX_POS=1                      # TQQQ/SQQQ directional mode: one clean trade at a time
 $perBudget=[math]::Round($TOTAL_BUDGET/$MAX_POS,2)
 $MAX_DAILY_LOSS=300.0
 $DAILY_TARGET=150.0            # lock in the day when total P&L (realized+unrealized) hits this
