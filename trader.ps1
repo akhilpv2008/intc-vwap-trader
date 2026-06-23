@@ -111,6 +111,18 @@ try{
   foreach($g in $bySym){ $bq=0.0;$bc=0.0;$sq=0.0;$sc=0.0; foreach($x in $g.Group){ $v=[double]$x.qty*[double]$x.price; if($x.side -eq "buy"){$bq+=[double]$x.qty;$bc+=$v}else{$sq+=[double]$x.qty;$sc+=$v} }; if($sq -gt 0 -and $bq -gt 0){ $avgB=$bc/$bq; if(($sc/$sq) -lt $avgB){ $lossTrades++ } } }
 }catch{}
 if(-not $killed -and ($dayPL -le -$SOFT_LOSS_STOP -or $lossTrades -ge $MAX_LOSS_TRADES)){ $killed=$true; Stamp "SOFT-STOP: dayPL $([math]::Round($dayPL,2)), losing trades $lossTrades - no new entries (stop the chop bleed; positions still managed/flattened)." }
+# MARKET REGIME ("don't fight the tape"): gauge SPY. Risk-off day -> trade less or skip new longs.
+try{
+  $spb=(Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/SPY/bars?timeframe=5Min&start=${today}T13:30:00Z&limit=120&feed=iex" -Headers $h).bars
+  if($spb -and $spb.Count -ge 3){
+    $pv=0.0;$vv=0.0; foreach($b in $spb){ $tp=([double]$b.h+[double]$b.l+[double]$b.c)/3; $pv+=$tp*[double]$b.v; $vv+=[double]$b.v }
+    $spyVwap=$pv/$vv; $spyLast=[double]$spb[-1].c; $spyOpen=[double]$spb[0].o
+    $spyChg=[math]::Round(($spyLast-$spyOpen)/$spyOpen*100,2); $spyBelow=($spyLast -lt $spyVwap)
+    if($spyBelow -and $spyChg -le -0.6){ $killed=$true; Stamp "RISK-OFF: SPY $spyChg% and below VWAP - NO new longs (don't fight the tape)." }
+    elseif($spyBelow){ if($MAX_POS -gt 1){ $MAX_POS=1 }; Stamp "CAUTIOUS: SPY below VWAP ($spyChg%) - trading light, max 1 position." }
+    else{ Stamp "Market regime OK: SPY above VWAP ($spyChg%)." }
+  }
+}catch{ Stamp "regime check skipped: $($_.Exception.Message)" }
 # PROTECT MODE: day P&L >= $150 - don't flatten, but ride winners with tighter controls + no new entries
 $protectMode=($dayPL -ge $DAILY_TARGET)
 if($protectMode){ Stamp "PROTECT MODE: day P&L=+$([math]::Round($dayPL,2)) - riding winners, tighter trail (0.5%), no new entries, hair-trigger exits." }
