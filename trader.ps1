@@ -100,6 +100,17 @@ $acct=Invoke-RestMethod -Uri "$base/v2/account" -Headers $h
 $dayPL=[double]$acct.equity-[double]$acct.last_equity
 $killed=($dayPL -le -$MAX_DAILY_LOSS)
 if($killed){ Stamp "KILL-SWITCH day P&L $([math]::Round($dayPL,2)) - no new entries." }
+# SOFT-STOP: cap chop/overtrading days. Count today's losing closed trades AND a soft $ loss cap;
+# either one stops NEW entries for the day (existing positions still managed/flattened).
+$SOFT_LOSS_STOP=90.0; $MAX_LOSS_TRADES=3
+$today=(Get-Date).ToUniversalTime().ToString("yyyy-MM-dd")
+$lossTrades=0
+try{
+  $fills=@(Invoke-RestMethod -Uri "$base/v2/account/activities/FILL?date=$today" -Headers $h)
+  $bySym=$fills | Group-Object symbol
+  foreach($g in $bySym){ $bq=0.0;$bc=0.0;$sq=0.0;$sc=0.0; foreach($x in $g.Group){ $v=[double]$x.qty*[double]$x.price; if($x.side -eq "buy"){$bq+=[double]$x.qty;$bc+=$v}else{$sq+=[double]$x.qty;$sc+=$v} }; if($sq -gt 0 -and $bq -gt 0){ $avgB=$bc/$bq; if(($sc/$sq) -lt $avgB){ $lossTrades++ } } }
+}catch{}
+if(-not $killed -and ($dayPL -le -$SOFT_LOSS_STOP -or $lossTrades -ge $MAX_LOSS_TRADES)){ $killed=$true; Stamp "SOFT-STOP: dayPL $([math]::Round($dayPL,2)), losing trades $lossTrades - no new entries (stop the chop bleed; positions still managed/flattened)." }
 # PROTECT MODE: day P&L >= $150 - don't flatten, but ride winners with tighter controls + no new entries
 $protectMode=($dayPL -ge $DAILY_TARGET)
 if($protectMode){ Stamp "PROTECT MODE: day P&L=+$([math]::Round($dayPL,2)) - riding winners, tighter trail (0.5%), no new entries, hair-trigger exits." }
