@@ -12,7 +12,7 @@ $MAX_POS=1                      # TQQQ/SQQQ directional mode: one clean trade at
 $perBudget=[math]::Round($TOTAL_BUDGET/$MAX_POS,2)
 $MAX_DAILY_LOSS=300.0
 $DAILY_TARGET=150.0            # lock in the day when total P&L (realized+unrealized) hits this
-$TRAIL_PCT=0.010; $CEIL_PCT=0.04; $INIT_STOP_PCT=0.010
+$TRAIL_PCT=0.020; $CEIL_PCT=0.04; $INIT_STOP_PCT=0.025   # widened (backtest: tight stops whipsawed -> big losses)
 $FLATTEN_MIN=5
 $etNow=[System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([datetime]::UtcNow,"Eastern Standard Time")
 $isFirstHourExit=($etNow.Hour -eq 10 -and $etNow.Minute -ge 30)   # 10:30-10:59 AM ET: take profit on morning holds
