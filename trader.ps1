@@ -111,14 +111,17 @@ try{
   foreach($g in $bySym){ $bq=0.0;$bc=0.0;$sq=0.0;$sc=0.0; foreach($x in $g.Group){ $v=[double]$x.qty*[double]$x.price; if($x.side -eq "buy"){$bq+=[double]$x.qty;$bc+=$v}else{$sq+=[double]$x.qty;$sc+=$v} }; if($sq -gt 0 -and $bq -gt 0){ $avgB=$bc/$bq; if(($sc/$sq) -lt $avgB){ $lossTrades++ } } }
 }catch{}
 if(-not $killed -and ($dayPL -le -$SOFT_LOSS_STOP -or $lossTrades -ge $MAX_LOSS_TRADES)){ $killed=$true; Stamp "SOFT-STOP: dayPL $([math]::Round($dayPL,2)), losing trades $lossTrades - no new entries (stop the chop bleed; positions still managed/flattened)." }
-# MARKET REGIME ("don't fight the tape"): gauge SPY. Risk-off day -> trade less or skip new longs.
+# MARKET REGIME ("don't fight the tape"): gauge SPY. Risk-off day -> block LONGS, but still allow the
+# inverse ETF (SQQQ) - on a down market the inverse IS the correct directional trade, not a "long to skip".
+$INVERSE=@("SQQQ","SQID","SPXS","SDOW","SOXS")   # inverse/short ETFs: rise when the market falls
+$riskOff=$false
 try{
   $spb=(Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/SPY/bars?timeframe=5Min&start=${today}T13:30:00Z&limit=120&feed=iex" -Headers $h).bars
   if($spb -and $spb.Count -ge 3){
     $pv=0.0;$vv=0.0; foreach($b in $spb){ $tp=([double]$b.h+[double]$b.l+[double]$b.c)/3; $pv+=$tp*[double]$b.v; $vv+=[double]$b.v }
     $spyVwap=$pv/$vv; $spyLast=[double]$spb[-1].c; $spyOpen=[double]$spb[0].o
     $spyChg=[math]::Round(($spyLast-$spyOpen)/$spyOpen*100,2); $spyBelow=($spyLast -lt $spyVwap)
-    if($spyBelow -and $spyChg -le -0.6){ $killed=$true; Stamp "RISK-OFF: SPY $spyChg% and below VWAP - NO new longs (don't fight the tape)." }
+    if($spyBelow -and $spyChg -le -0.6){ $riskOff=$true; Stamp "RISK-OFF: SPY $spyChg% and below VWAP - longs blocked; only inverse ETF (SQQQ) allowed (it's the down-market trade)." }
     elseif($spyBelow){ if($MAX_POS -gt 1){ $MAX_POS=1 }; Stamp "CAUTIOUS: SPY below VWAP ($spyChg%) - trading light, max 1 position." }
     else{ Stamp "Market regime OK: SPY above VWAP ($spyChg%)." }
   }
@@ -204,6 +207,7 @@ foreach($s in $syms){
     $score=[math]::Round(($price-$vwap)/$vwap*100,2)
     if($score -gt 4.0){ Stamp "$s too extended +${score}% above VWAP - missed the move, skip"; continue }  # late-entry filter
     if($noNewEntries){ Stamp "$s skip - no new entries after 3PM ET"; continue }
+    if($riskOff -and ($INVERSE -notcontains $s)){ Stamp "$s skip - RISK-OFF blocks longs (only inverse ETF allowed)"; continue }
     $cands+=[pscustomobject]@{S=$s;Price=$price;Atr=$atr5;Rsi=$rsiNow;Score=$score}
     Stamp "$s CANDIDATE OK (RSI $rsiNow, +$score% vs VWAP)"
   }catch{ Stamp "$s err $($_.Exception.Message)" }
