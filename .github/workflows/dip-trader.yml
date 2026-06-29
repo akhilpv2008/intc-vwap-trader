@@ -1,0 +1,21 @@
+name: dip-trader
+# Mean-reversion "buy the dip" strategy. Runs ONCE near the close to make the day's buy/exit
+# decision on end-of-day RSI(2). Holds 1-5 days (overnight ok). Replaces the momentum market-runner.
+on:
+  schedule:
+    - cron: '45 19 * * 1-5'   # 3:45 PM ET (EDT) Mon-Fri - just before close, near the daily close price
+  workflow_dispatch: {}
+concurrency: { group: dip-trader, cancel-in-progress: false }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run dip-buyer
+        shell: pwsh
+        env:
+          APCA_API_BASE_URL:   ${{ secrets.APCA_API_BASE_URL }}
+          APCA_API_KEY_ID:     ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+        run: pwsh ./dip_trader.ps1
