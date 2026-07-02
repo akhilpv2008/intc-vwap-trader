@@ -60,6 +60,13 @@ foreach($s in $UNIVERSE){
     catch{ Stamp "$s exit err $($_.Exception.Message)" }
   } else {
     Stamp "HOLD $s qty $($p.qty) (RSI2=$rsi, held=$held d, need RSI>=65 or 5d) uPL=$upl"
+    # safety net: make sure a disaster stop is resting; re-arm if it vanished
+    $hasStop=@(Invoke-RestMethod -Uri "$base/v2/orders?status=open&symbols=$s" -Headers $h | Where-Object { $_.side -eq "sell" -and $_.type -eq "stop" }).Count -ge 1
+    if(-not $hasStop){
+      $entryPx=[double]$p.avg_entry_price; $stopPx=[math]::Round($entryPx*(1-$DISASTER_STOP),2)
+      $sb=@{ symbol=$s; qty="$($p.qty)"; side="sell"; type="stop"; stop_price="$stopPx"; time_in_force="gtc" } | ConvertTo-Json
+      try{ Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $sb -ContentType "application/json"|Out-Null; Stamp "$s RE-ARMED missing disaster-stop @ $stopPx" }catch{ Stamp "$s re-arm stop err $($_.ErrorDetails.Message)" }
+    }
   }
 }
 if($havePos){ Stamp "already holding - no new entry this run"; exit 0 }
@@ -77,10 +84,17 @@ foreach($s in $UNIVERSE){
     try{
       $ord=Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $body -ContentType "application/json"
       Stamp "BUY $s $lot @ ~$([math]::Round($px,2)) (RSI2=$rsi dip in uptrend)"
-      Start-Sleep -Seconds 3
+      # wait for the buy to actually FILL before arming the stop (else it rejects for insufficient qty)
+      $filled=$false
+      for($try=1;$try -le 20;$try++){ Start-Sleep -Seconds 2; $chk=Pos $s; if($chk -and [int]$chk.qty -ge 1){ $filled=$true; break } }
       $stopPx=[math]::Round($px*(1-$DISASTER_STOP),2)
-      $sb=@{ symbol=$s; qty="$lot"; side="sell"; type="stop"; stop_price="$stopPx"; time_in_force="gtc" } | ConvertTo-Json
-      try{ Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $sb -ContentType "application/json"|Out-Null; Stamp "$s disaster-stop set @ $stopPx (-12%)" }catch{ Stamp "$s stop err $($_.ErrorDetails.Message)" }
+      $armed=$false
+      for($try=1;$try -le 5 -and -not $armed;$try++){
+        $sb=@{ symbol=$s; qty="$lot"; side="sell"; type="stop"; stop_price="$stopPx"; time_in_force="gtc" } | ConvertTo-Json
+        try{ Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $sb -ContentType "application/json"|Out-Null; $armed=$true; Stamp "$s disaster-stop set @ $stopPx (-12%)" }
+        catch{ Stamp "$s stop attempt $try err $($_.ErrorDetails.Message)"; Start-Sleep -Seconds 3 }
+      }
+      if(-not $armed){ Stamp "$s WARNING: disaster stop NOT armed after retries - position UNPROTECTED, needs manual stop!" }
     } catch { Stamp "$s buy err $($_.ErrorDetails.Message)" }
     exit 0   # one position at a time
   }
