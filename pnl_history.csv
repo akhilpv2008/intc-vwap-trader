@@ -13,3 +13,4 @@ date,symbol,equity,account_day_pl,round_trips,symbol_cash_pl,cumulative_vs_10k
 2026-07-06,TQQQ|SQQQ,9744.22,291.25,0,0,-255.78
 2026-07-07,TQQQ|SQQQ,9297.97,-538.75,0,0,-702.03
 2026-07-08,TQQQ|SQQQ,9404.22,91.25,0,0,-595.78
+2026-07-09,TQQQ|SQQQ,9600.86,226.64,0,9316.64,-399.14
