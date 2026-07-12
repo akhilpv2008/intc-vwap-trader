@@ -47,7 +47,11 @@ function CancelOpen($s){ foreach($o in @(Invoke-RestMethod -Uri "$base/v2/orders
 
 $acct=Invoke-RestMethod -Uri "$base/v2/account" -Headers $h
 $cash=[double]$acct.cash
-Stamp "DIP-BUYER run. equity $([math]::Round([double]$acct.equity,2)) cash $([math]::Round($cash,2))"
+# MORNING SAFETY MODE: runs before 14:00 ET only verify/re-arm stops (backtest: morning entries are WORSE
+# 65.7%/+0.74% vs close 69.2%/+0.77% - the bounce starts in the overnight gap). Decisions happen at ~3:45pm ET.
+$etHour=[int]([DateTime]::UtcNow.AddHours(-4).Hour)
+$morningMode=($etHour -lt 14)
+Stamp "DIP-BUYER run. equity $([math]::Round([double]$acct.equity,2)) cash $([math]::Round($cash,2)) mode=$(if($morningMode){'MORNING-SAFETY (stops only)'}else{'DECISION'})"
 
 # 1) MANAGE existing dip positions (exit check)
 $heldCount=0
@@ -57,7 +61,7 @@ foreach($s in $UNIVERSE){
   $c=DailyCloses $s; $closes=@($c|ForEach-Object{[double]$_.c})
   $rsi=Rsi $closes 2; $held=HeldDays $s
   $upl=[math]::Round([double]$p.unrealized_pl,2)
-  if($rsi -ge 65 -or $held -ge $MAX_HOLD_DAYS){
+  if((-not $morningMode) -and ($rsi -ge 65 -or $held -ge $MAX_HOLD_DAYS)){
     CancelOpen $s; Start-Sleep -Seconds 1
     try{ Invoke-RestMethod -Uri "$base/v2/positions/$s" -Method Delete -Headers $h | Out-Null; Stamp "EXIT $s (RSI2=$rsi, held=$held d) uPL=$upl" }
     catch{ Stamp "$s exit err $($_.Exception.Message)" }
@@ -72,6 +76,7 @@ foreach($s in $UNIVERSE){
     }
   }
 }
+if($morningMode){ Stamp "morning safety run done (stops verified) - entry/exit decisions at 3:45pm"; exit 0 }
 $slots=$MAX_POSITIONS-$heldCount
 if($slots -le 0){ Stamp "basket full ($heldCount/$MAX_POSITIONS) - no new entries this run"; exit 0 }
 
@@ -83,9 +88,11 @@ foreach($s in $UNIVERSE){
   if(Pos $s){ continue }   # already hold this name
   $c=DailyCloses $s; $closes=@($c|ForEach-Object{[double]$_.c})
   if($closes.Count -lt 205){ Stamp "$s insufficient history"; continue }
-  $rsi=Rsi $closes 2; $sma=Sma $closes 200; $px=$closes[-1]
-  $cond=($rsi -lt 10 -and $px -gt $sma)
-  Stamp "$s scan: RSI2=$rsi  px=$([math]::Round($px,2))  200SMA=$([math]::Round($sma,2))  dipBuy=$cond"
+  $rsi=Rsi $closes 2; $rsiY=Rsi ($closes[0..($closes.Count-2)]) 2; $cumRsi=$rsi+$rsiY
+  $sma=Sma $closes 200; $px=$closes[-1]
+  # v3 entry: CUMULATIVE RSI2 (today+yesterday) < 35 (shootout: 71.6% win / +0.87% per trade vs 69.2% / +0.77% for RSI2<10)
+  $cond=($cumRsi -lt 35 -and $px -gt $sma)
+  Stamp "$s scan: cumRSI2=$([math]::Round($cumRsi,1)) (today $rsi + yday $rsiY)  px=$([math]::Round($px,2))  200SMA=$([math]::Round($sma,2))  dipBuy=$cond"
   if($cond){
     $lot=[int][math]::Floor($perSlot/$px); if($lot -lt 1){ Stamp "$s not enough cash per slot"; continue }
     $body=@{ symbol=$s; qty="$lot"; side="buy"; type="market"; time_in_force="day" } | ConvertTo-Json

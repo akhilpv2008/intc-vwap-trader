@@ -3,7 +3,8 @@ name: dip-trader
 # decision on end-of-day RSI(2). Holds 1-5 days (overnight ok). Replaces the momentum market-runner.
 on:
   schedule:
-    - cron: '45 19 * * 1-5'   # 3:45 PM ET (EDT) Mon-Fri - just before close, near the daily close price
+    - cron: '35 13 * * 1-5'   # 9:35 AM ET - MORNING SAFETY run (verify positions + re-arm stops only)
+    - cron: '45 19 * * 1-5'   # 3:45 PM ET Mon-Fri - DECISION run (entries/exits near the daily close)
   workflow_dispatch: {}
 concurrency: { group: dip-trader, cancel-in-progress: false }
 jobs:
