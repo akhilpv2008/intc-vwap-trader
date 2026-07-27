@@ -4,7 +4,9 @@ name: dip-trader
 on:
   schedule:
     - cron: '35 13 * * 1-5'   # 9:35 AM ET - MORNING SAFETY run (verify positions + re-arm stops only)
-    - cron: '45 19 * * 1-5'   # 3:45 PM ET Mon-Fri - DECISION run (entries/exits near the daily close)
+    - cron: '25 19 * * 1-5'   # 3:25 PM ET Mon-Fri - DECISION run (entries/exits near the daily close).
+    - cron: '40 19 * * 1-5'   # 3:40 PM ET backup - GitHub cron drifts late (2026-07-24 it fired 4:50pm,
+                              # AFTER the close, so market orders queued to the next open instead of filling).
   workflow_dispatch: {}
 concurrency: { group: dip-trader, cancel-in-progress: false }
 jobs:

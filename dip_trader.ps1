@@ -77,6 +77,11 @@ foreach($s in $UNIVERSE){
   }
 }
 if($morningMode){ Stamp "morning safety run done (stops verified) - entry/exit decisions at 3:45pm"; exit 0 }
+# count PENDING (unfilled) buy orders as committed slots - otherwise a queued after-hours order
+# gets duplicated on the next run and over-commits cash (bug seen 2026-07-24: TQQQ+INTC left queued).
+$pendingBuys=@(Invoke-RestMethod -Uri "$base/v2/orders?status=open" -Headers $h | Where-Object { $_.side -eq "buy" })
+if($pendingBuys.Count -gt 0){ Stamp "pending unfilled buys: $($pendingBuys.Count) ($(($pendingBuys|ForEach-Object{$_.symbol}) -join ',')) - counting as committed" }
+$heldCount+=$pendingBuys.Count
 $slots=$MAX_POSITIONS-$heldCount
 if($slots -le 0){ Stamp "basket full ($heldCount/$MAX_POSITIONS) - no new entries this run"; exit 0 }
 
