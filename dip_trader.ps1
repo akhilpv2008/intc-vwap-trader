@@ -27,8 +27,12 @@ $dh=@{ "APCA-API-KEY-ID"=$kid; "APCA-API-SECRET-KEY"=$sec }
 $UNIVERSE=@("NVDA","MU","HOOD","GE","LRCX","PLTR","AMAT","META","AMD","AVGO","INTC","GOOGL","TQQQ")
 $MAX_POSITIONS=3              # basket: up to 3 concurrent dip positions (diversifies the falling-knife risk)
 $DISASTER_STOP=0.12           # -12% broker-side tail stop (wide, rarely hit)
-$MAX_HOLD_DAYS=5
-$EARN_BLACKOUT_DAYS=6         # skip a buy if earnings land within this many days (covers the 5-day hold)
+# exit_test.ps1 (857+ trades): extending the max hold 5d -> 10d is the single best exit tweak
+# (win 71.5%->72.8%, avg/trade +1.174%->+1.253%, edge/risk 0.264->0.288). Most exits still fire on
+# the RSI signal in 2-3 days; the cap is only a backstop. Tested and REJECTED: profit targets
+# (+3% target cut avg to 0.42% - caps winners), "first up close" (0.57%), RSI exit at 50 or 80.
+$MAX_HOLD_DAYS=10
+$EARN_BLACKOUT_DAYS=8         # widened with the longer hold so we don't sit into an earnings gap
 # earnings.json is refreshed by earnings_calendar.py (free via yfinance, no API key)
 $EARN=$null
 $earnFile=Join-Path $PSScriptRoot "earnings.json"
