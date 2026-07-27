@@ -1,0 +1,53 @@
+{
+  "generated": "2026-07-27",
+  "earnings": {
+    "NVDA": {
+      "date": "2026-08-26",
+      "days_away": 30
+    },
+    "AMD": {
+      "date": "2026-08-04",
+      "days_away": 8
+    },
+    "INTC": {
+      "date": "2026-10-22",
+      "days_away": 87
+    },
+    "HOOD": {
+      "date": "2026-07-29",
+      "days_away": 2
+    },
+    "PLTR": {
+      "date": "2026-08-03",
+      "days_away": 7
+    },
+    "META": {
+      "date": "2026-07-29",
+      "days_away": 2
+    },
+    "MSFT": {
+      "date": "2026-07-29",
+      "days_away": 2
+    },
+    "AMZN": {
+      "date": "2026-07-30",
+      "days_away": 3
+    },
+    "GOOGL": {
+      "date": "2026-10-28",
+      "days_away": 93
+    },
+    "AAPL": {
+      "date": "2026-07-30",
+      "days_away": 3
+    },
+    "TQQQ": {
+      "date": null,
+      "days_away": null
+    },
+    "QQQ": {
+      "date": null,
+      "days_away": null
+    }
+  }
+}

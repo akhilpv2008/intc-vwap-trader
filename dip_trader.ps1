@@ -24,6 +24,11 @@ $UNIVERSE=@("NVDA","AMD","INTC","HOOD","PLTR","META","MSFT","AMZN","GOOGL","AAPL
 $MAX_POSITIONS=3              # basket: up to 3 concurrent dip positions (diversifies the falling-knife risk)
 $DISASTER_STOP=0.12           # -12% broker-side tail stop (wide, rarely hit)
 $MAX_HOLD_DAYS=5
+$EARN_BLACKOUT_DAYS=6         # skip a buy if earnings land within this many days (covers the 5-day hold)
+# earnings.json is refreshed by earnings_calendar.py (free via yfinance, no API key)
+$EARN=$null
+$earnFile=Join-Path $PSScriptRoot "earnings.json"
+if(Test-Path $earnFile){ try{ $EARN=Get-Content $earnFile -Raw | ConvertFrom-Json }catch{} }
 function Stamp($m){ Write-Host "[$([DateTime]::UtcNow.ToString('HH:mm:ss'))] $m" }
 function DailyCloses($s){
   $st=(Get-Date).ToUniversalTime().AddDays(-420).ToString("yyyy-MM-dd")
@@ -96,8 +101,15 @@ foreach($s in $UNIVERSE){
   $rsi=Rsi $closes 2; $rsiY=Rsi ($closes[0..($closes.Count-2)]) 2; $cumRsi=$rsi+$rsiY
   $sma=Sma $closes 200; $px=$closes[-1]
   # v3 entry: CUMULATIVE RSI2 (today+yesterday) < 35 (shootout: 71.6% win / +0.87% per trade vs 69.2% / +0.77% for RSI2<10)
-  $cond=($cumRsi -lt 35 -and $px -gt $sma)
-  Stamp "$s scan: cumRSI2=$([math]::Round($cumRsi,1)) (today $rsi + yday $rsiY)  px=$([math]::Round($px,2))  200SMA=$([math]::Round($sma,2))  dipBuy=$cond"
+  # EARNINGS BLACKOUT: skip if the stock reports while we'd still be holding (max 5-day hold + buffer).
+  # Earnings gaps are +/-10% coin flips that swamp our ~+0.9%/trade edge - variance, not edge.
+  $earnBlock=$false; $earnNote=""
+  if($EARN -and $EARN.earnings.PSObject.Properties.Name -contains $s){
+    $ed=$EARN.earnings.$s
+    if($ed.days_away -ne $null -and [int]$ed.days_away -le $EARN_BLACKOUT_DAYS){ $earnBlock=$true; $earnNote=" EARNINGS in $($ed.days_away)d ($($ed.date)) - BLACKOUT" }
+  }
+  $cond=($cumRsi -lt 35 -and $px -gt $sma -and -not $earnBlock)
+  Stamp "$s scan: cumRSI2=$([math]::Round($cumRsi,1)) (today $rsi + yday $rsiY)  px=$([math]::Round($px,2))  200SMA=$([math]::Round($sma,2))  dipBuy=$cond$earnNote"
   if($cond){
     $lot=[int][math]::Floor($perSlot/$px); if($lot -lt 1){ Stamp "$s not enough cash per slot"; continue }
     $body=@{ symbol=$s; qty="$lot"; side="buy"; type="market"; time_in_force="day" } | ConvertTo-Json
