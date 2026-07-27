@@ -4,7 +4,7 @@ that reports earnings while we'd still be holding it (max 5-day hold).
 """
 import json, datetime, sys
 
-SYMS = ["NVDA","AMD","INTC","HOOD","PLTR","META","MSFT","AMZN","GOOGL","AAPL","TQQQ","QQQ"]
+SYMS = ["NVDA","MU","HOOD","GE","LRCX","PLTR","AMAT","META","AMD","AVGO","INTC","GOOGL","TQQQ","QQQ"]
 
 def main():
     try:

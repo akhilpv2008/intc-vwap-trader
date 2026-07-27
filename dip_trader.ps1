@@ -20,7 +20,11 @@ $h=@{ "APCA-API-KEY-ID"=$kid; "APCA-API-SECRET-KEY"=$sec }
 $dh=@{ "APCA-API-KEY-ID"=$kid; "APCA-API-SECRET-KEY"=$sec }
 # v2 (2026-07-12): individual-stock BASKET. 5yr backtest of this exact signal on these names:
 # 68% win rate over 1,453 trades; NVDA +274%, AMD +168%, INTC +127%. (TSLA/SOFI/UNH tested NEGATIVE - excluded.)
-$UNIVERSE=@("NVDA","AMD","INTC","HOOD","PLTR","META","MSFT","AMZN","GOOGL","AAPL","TQQQ")   # scan order = backtest strength
+# v4 (2026-07-27) universe_test.ps1 across 65 liquid names: scanning the WHOLE market is WORSE
+# (65 names = 67.8% win / +0.387% per trade vs our focused basket 71.8% / +0.913%; 19 of 65 names
+# were NET NEGATIVE). Mean-reversion works best on HIGH-VOLATILITY semis/tech - bigger dips, bigger
+# bounces. Dropped mediocre mega-caps (AAPL/MSFT/AMZN), added high-vol semis with the same profile.
+$UNIVERSE=@("NVDA","MU","HOOD","GE","LRCX","PLTR","AMAT","META","AMD","AVGO","INTC","GOOGL","TQQQ")
 $MAX_POSITIONS=3              # basket: up to 3 concurrent dip positions (diversifies the falling-knife risk)
 $DISASTER_STOP=0.12           # -12% broker-side tail stop (wide, rarely hit)
 $MAX_HOLD_DAYS=5
