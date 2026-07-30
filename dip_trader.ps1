@@ -119,7 +119,19 @@ foreach($s in $UNIVERSE){
   $cond=($cumRsi -lt 35 -and $px -gt $sma -and -not $earnBlock)
   Stamp "$s scan: cumRSI2=$([math]::Round($cumRsi,1)) (today $rsi + yday $rsiY)  px=$([math]::Round($px,2))  200SMA=$([math]::Round($sma,2))  dipBuy=$cond$earnNote"
   if($cond){
-    $lot=[int][math]::Floor($perSlot/$px); if($lot -lt 1){ Stamp "$s not enough cash per slot"; continue }
+    # HARD CASH GUARD (bug 2026-07-28: two concurrent runs both saw 3 free slots and placed 5 orders
+    # totalling $17,982 on $10,052 cash -> margin). Re-check LIVE cash + committed orders before EVERY
+    # buy, and never commit more than we actually hold in cash. Cash-only is a hard rule.
+    $liveAcct=Invoke-RestMethod -Uri "$base/v2/account" -Headers $h
+    $liveCash=[double]$liveAcct.cash
+    $openBuys=@(Invoke-RestMethod -Uri "$base/v2/orders?status=open" -Headers $h | Where-Object { $_.side -eq "buy" })
+    $committed=0.0
+    foreach($ob in $openBuys){ try{ $q=[double]$ob.qty; $lp=Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$($ob.symbol)/trades/latest?feed=iex" -Headers $dh; $committed+=$q*[double]$lp.trade.p }catch{} }
+    $free=$liveCash-$committed
+    if($free -lt ($px*1)){ Stamp "$s SKIP - cash guard: free=$([math]::Round($free,2)) (cash $([math]::Round($liveCash,2)) - committed $([math]::Round($committed,2)))"; continue }
+    $budget=[math]::Min($perSlot,$free)
+    $lot=[int][math]::Floor($budget/$px); if($lot -lt 1){ Stamp "$s not enough cash per slot"; continue }
+    if($openBuys.Count + $heldCount -ge $MAX_POSITIONS){ Stamp "$s SKIP - $($openBuys.Count) pending + $heldCount held already at max $MAX_POSITIONS"; continue }
     $body=@{ symbol=$s; qty="$lot"; side="buy"; type="market"; time_in_force="day" } | ConvertTo-Json
     try{
       $ord=Invoke-RestMethod -Uri "$base/v2/orders" -Method Post -Headers $h -Body $body -ContentType "application/json"

@@ -5,10 +5,11 @@ on:
   schedule:
     - cron: '35 13 * * 1-5'   # 9:35 AM ET - MORNING SAFETY run (verify positions + re-arm stops only)
     - cron: '25 19 * * 1-5'   # 3:25 PM ET Mon-Fri - DECISION run (entries/exits near the daily close).
-    - cron: '40 19 * * 1-5'   # 3:40 PM ET backup - GitHub cron drifts late (2026-07-24 it fired 4:50pm,
-                              # AFTER the close, so market orders queued to the next open instead of filling).
+    # NOTE: a 2nd "backup" decision cron was REMOVED 2026-07-30. On 07-28 it raced the primary run:
+    # both fired at once, both saw 3 free slots, and 5 orders went in ($17,982 on $10,052 cash = margin).
+    # One decision run only. The script also now re-checks live cash before every single buy.
   workflow_dispatch: {}
-concurrency: { group: dip-trader, cancel-in-progress: false }
+concurrency: { group: dip-trader-single, cancel-in-progress: true }   # never let two decision runs overlap
 jobs:
   run:
     runs-on: ubuntu-latest
