@@ -112,9 +112,17 @@ foreach($s in $UNIVERSE){
   # EARNINGS BLACKOUT: skip if the stock reports while we'd still be holding (max 5-day hold + buffer).
   # Earnings gaps are +/-10% coin flips that swamp our ~+0.9%/trade edge - variance, not edge.
   $earnBlock=$false; $earnNote=""
+  # Recompute days from the DATE, never trust the stored days_away - if earnings.json goes stale
+  # (e.g. the cloud refresh fails) a cached "2 days away" would otherwise block the stock forever.
   if($EARN -and $EARN.earnings.PSObject.Properties.Name -contains $s){
     $ed=$EARN.earnings.$s
-    if($ed.days_away -ne $null -and [int]$ed.days_away -le $EARN_BLACKOUT_DAYS){ $earnBlock=$true; $earnNote=" EARNINGS in $($ed.days_away)d ($($ed.date)) - BLACKOUT" }
+    if($ed.date){
+      try{
+        $dleft=([datetime]$ed.date - (Get-Date).Date).Days
+        if($dleft -ge 0 -and $dleft -le $EARN_BLACKOUT_DAYS){ $earnBlock=$true; $earnNote=" EARNINGS in ${dleft}d ($($ed.date)) - BLACKOUT" }
+        elseif($dleft -lt 0){ $earnNote=" (earnings date $($ed.date) is stale/past - ignoring)" }
+      }catch{ $earnNote=" (bad earnings date: $($ed.date))" }
+    }
   }
   $cond=($cumRsi -lt 35 -and $px -gt $sma -and -not $earnBlock)
   Stamp "$s scan: cumRSI2=$([math]::Round($cumRsi,1)) (today $rsi + yday $rsiY)  px=$([math]::Round($px,2))  200SMA=$([math]::Round($sma,2))  dipBuy=$cond$earnNote"

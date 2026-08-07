@@ -21,7 +21,7 @@ jobs:
       - name: Refresh earnings calendar (free, no API key)
         continue-on-error: true      # a stale/missing calendar must never block trading
         run: |
-          pip install --quiet yfinance
+          pip install --quiet yfinance lxml html5lib beautifulsoup4
           python earnings_calendar.py
       - name: Run dip-buyer
         shell: pwsh
