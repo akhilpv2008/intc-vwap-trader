@@ -1,7 +1,7 @@
-# Intraday backtest of the live bot logic on real 5-min bars (last ~45 days).
+﻿# Intraday backtest of the live bot logic on real 5-min bars (last ~45 days).
 # Parametrized: trailing-stop %, and max trades/day (to test the "fewer trades" idea).
 $ErrorActionPreference="Stop"
-$h=@{ "APCA-API-KEY-ID"="PKRIYKPAOXT3WFBOYB76RQI2Y5"; "APCA-API-SECRET-KEY"="9YFAk7FovxgzsyokeZBwBrbjXDdkgo6wSUtA2bYQp1do" }
+$k=$env:APCA_API_KEY_ID; $s=$env:APCA_API_SECRET_KEY; if(-not $k){ foreach($l in (Get-Content (Join-Path $PSScriptRoot "..\.env"))){ if($l -match "^\s*APCA_API_KEY_ID\s*=\s*(.+)$"){$k=$Matches[1].Trim()}; if($l -match "^\s*APCA_API_SECRET_KEY\s*=\s*(.+)$"){$s=$Matches[1].Trim()} } }; $h=@{ "APCA-API-KEY-ID"=$k; "APCA-API-SECRET-KEY"=$s }
 $start=(Get-Date).ToUniversalTime().AddDays(-45).ToString("yyyy-MM-dd")
 function Bars5($s){ $all=@();$pt=$null; do{ $u="https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=5Min&start=${start}T00:00:00Z&limit=10000&feed=iex&adjustment=all"; if($pt){$u+="&page_token=$pt"}; $r=Invoke-RestMethod -Uri $u -Headers $h; $all+=$r.bars; $pt=$r.next_page_token }while($pt); $all }
 function EmaArr($v,$p){ $k=2.0/($p+1); $o=@($v[0]); for($i=1;$i -lt $v.Count;$i++){ $o+=($v[$i]*$k+$o[$i-1]*(1-$k)) }; $o }
@@ -33,3 +33,4 @@ function BT($sym,$trail,$initStop,$maxPerDay){
 foreach($s in "INTC","HOOD","SOFI","AFRM","NVDA","AMD"){ $r=BT $s 0.01 0.01 99; if($r -is [string]){$r}else{ "{0,-6} {1,3} trades  win {2,5}%  return {3,6}%" -f $r.Sym,$r.Trades,$r.Win,$r.Ret } }
 "=== B) SIMPLER variant (2.5% wide stop, MAX 1 trade/day) ==="
 foreach($s in "TQQQ","SQQQ","INTC","NVDA"){ $r=BT $s 0.025 0.025 1; if($r -is [string]){$r}else{ "{0,-6} {1,3} trades  win {2,5}%  return {3,6}%" -f $r.Sym,$r.Trades,$r.Win,$r.Ret } }
+

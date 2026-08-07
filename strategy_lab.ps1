@@ -1,8 +1,8 @@
-# strategy_lab.ps1 - honest head-to-head of DIFFERENT strategy families on daily bars (5yr).
+﻿# strategy_lab.ps1 - honest head-to-head of DIFFERENT strategy families on daily bars (5yr).
 # Goal: find anything that beats buy-and-hold on a RISK-ADJUSTED basis (Sharpe), not just raw return.
 # Each strategy is fully invested or in cash on a given day (no leverage stacking), $10k start.
 $ErrorActionPreference="Stop"
-$h=@{ "APCA-API-KEY-ID"="PKRIYKPAOXT3WFBOYB76RQI2Y5"; "APCA-API-SECRET-KEY"="9YFAk7FovxgzsyokeZBwBrbjXDdkgo6wSUtA2bYQp1do" }
+$k=$env:APCA_API_KEY_ID; $s=$env:APCA_API_SECRET_KEY; if(-not $k){ foreach($l in (Get-Content (Join-Path $PSScriptRoot "..\.env"))){ if($l -match "^\s*APCA_API_KEY_ID\s*=\s*(.+)$"){$k=$Matches[1].Trim()}; if($l -match "^\s*APCA_API_SECRET_KEY\s*=\s*(.+)$"){$s=$Matches[1].Trim()} } }; $h=@{ "APCA-API-KEY-ID"=$k; "APCA-API-SECRET-KEY"=$s }
 $start="2020-06-01"
 function Bars($s){ $all=@();$pt=$null; do{ $u="https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=1Day&start=${start}T00:00:00Z&limit=10000&feed=iex&adjustment=all"; if($pt){$u+="&page_token=$pt"}; $r=Invoke-RestMethod -Uri $u -Headers $h; $all+=$r.bars; $pt=$r.next_page_token }while($pt); $all }
 function Sma($v,$i,$p){ if($i -lt $p-1){return $null}; $s=0.0; for($j=$i-$p+1;$j -le $i;$j++){$s+=$v[$j]}; $s/$p }
@@ -51,3 +51,4 @@ foreach($sym in "QQQ","SPY","TQQQ"){
   Stats "7) MR dips in uptrend (RSI2<10 & >200SMA)" $mr2
   ""
 }
+

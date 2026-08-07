@@ -1,11 +1,11 @@
-# Backtest of the TQQQ/SQQQ directional day-trade idea on ~1yr of DAILY bars.
+﻿# Backtest of the TQQQ/SQQQ directional day-trade idea on ~1yr of DAILY bars.
 # Rule (no lookahead): use YESTERDAY's QQQ trend -> if QQQ closed above its 20-day EMA = uptrend
 # -> today go long TQQQ; else go long SQQQ. Enter at today's OPEN, exit at today's CLOSE
 # (intraday, flat by close). Intraday stop ~2.5%. Skip "chaos" days (QQQ gap > 1.5%).
 # This approximates the directional edge; the live bot adds intraday VWAP/RSI/MACD timing.
 $ErrorActionPreference="Stop"
 $h=@{ "APCA-API-KEY-ID"=$env:APCA_API_KEY_ID; "APCA-API-SECRET-KEY"=$env:APCA_API_SECRET_KEY }
-if(-not $env:APCA_API_KEY_ID){ $h=@{ "APCA-API-KEY-ID"="PKRIYKPAOXT3WFBOYB76RQI2Y5"; "APCA-API-SECRET-KEY"="9YFAk7FovxgzsyokeZBwBrbjXDdkgo6wSUtA2bYQp1do" } }
+if(-not $env:APCA_API_KEY_ID){ $k=$env:APCA_API_KEY_ID; $s=$env:APCA_API_SECRET_KEY; if(-not $k){ foreach($l in (Get-Content (Join-Path $PSScriptRoot "..\.env"))){ if($l -match "^\s*APCA_API_KEY_ID\s*=\s*(.+)$"){$k=$Matches[1].Trim()}; if($l -match "^\s*APCA_API_SECRET_KEY\s*=\s*(.+)$"){$s=$Matches[1].Trim()} } }; $h=@{ "APCA-API-KEY-ID"=$k; "APCA-API-SECRET-KEY"=$s } }
 $start="2025-06-01"
 function Bars($s){ (Invoke-RestMethod -Uri "https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=1Day&start=${start}T00:00:00Z&limit=400&feed=iex" -Headers $h).bars }
 $qqq=Bars "QQQ"; $tqqq=Bars "TQQQ"; $sqqq=Bars "SQQQ"
@@ -44,3 +44,4 @@ $totRet=[math]::Round(($eq-10000)/10000*100,1)
 "win rate: $([math]::Round($wins/[math]::Max($n,1)*100,1))%  ($wins W / $losses L)"
 "avg win: `$$([math]::Round($sumWin/[math]::Max($wins,1),2))  avg loss: `$$([math]::Round($sumLoss/[math]::Max($losses,1),2))"
 "max drawdown: $([math]::Round($maxDD*100,1))%   Sharpe (annualized): $sharpe"
+

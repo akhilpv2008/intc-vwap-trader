@@ -1,8 +1,8 @@
-# Should the bot scan a BIG universe instead of 10 stocks?
+﻿# Should the bot scan a BIG universe instead of 10 stocks?
 # Tests the same dip signal (cumRSI2<35 & >200SMA, exit RSI2>=65 or 5d) across ~60 liquid names,
 # and reports: per-stock results, pooled stats, and how many signals fire per day (opportunity count).
 $ErrorActionPreference="Stop"
-$h=@{ "APCA-API-KEY-ID"="PKRIYKPAOXT3WFBOYB76RQI2Y5"; "APCA-API-SECRET-KEY"="9YFAk7FovxgzsyokeZBwBrbjXDdkgo6wSUtA2bYQp1do" }
+$k=$env:APCA_API_KEY_ID; $s=$env:APCA_API_SECRET_KEY; if(-not $k){ foreach($l in (Get-Content (Join-Path $PSScriptRoot "..\.env"))){ if($l -match "^\s*APCA_API_KEY_ID\s*=\s*(.+)$"){$k=$Matches[1].Trim()}; if($l -match "^\s*APCA_API_SECRET_KEY\s*=\s*(.+)$"){$s=$Matches[1].Trim()} } }; $h=@{ "APCA-API-KEY-ID"=$k; "APCA-API-SECRET-KEY"=$s }
 $start="2020-06-01"
 function Bars($s){ $all=@();$pt=$null; do{ $u="https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=1Day&start=${start}T00:00:00Z&limit=10000&feed=iex&adjustment=all"; if($pt){$u+="&page_token=$pt"}; $r=Invoke-RestMethod -Uri $u -Headers $h; $all+=$r.bars; $pt=$r.next_page_token }while($pt); ,@($all) }
 function RsiN($cl,$i,$p){ if($i -lt $p){return 50}; $g=0.0;$l=0.0; for($j=$i-$p+1;$j -le $i;$j++){ $dd=$cl[$j]-$cl[$j-1]; if($dd -gt 0){$g+=$dd}else{$l+=-$dd} }; $al=$l/$p; if($al -eq 0){return 100}; 100-100/(1+($g/$p)/$al) }
@@ -55,3 +55,4 @@ $neg=@($rank|Where-Object{$_.Avg -lt 0}).Count
 "names with NEGATIVE avg/trade: $neg of $($rank.Count)"
 $multi=@($SIGDAYS.GetEnumerator()|Where-Object{$_.Value -ge 3}).Count
 "days where 3+ signals fired at once: $multi (bot can only take 3 - competition for slots)"
+

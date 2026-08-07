@@ -1,6 +1,6 @@
-# Compare several approaches over the same ~1yr, so we know what actually beats what.
+﻿# Compare several approaches over the same ~1yr, so we know what actually beats what.
 $ErrorActionPreference="Stop"
-$h=@{ "APCA-API-KEY-ID"="PKRIYKPAOXT3WFBOYB76RQI2Y5"; "APCA-API-SECRET-KEY"="9YFAk7FovxgzsyokeZBwBrbjXDdkgo6wSUtA2bYQp1do" }
+$k=$env:APCA_API_KEY_ID; $s=$env:APCA_API_SECRET_KEY; if(-not $k){ foreach($l in (Get-Content (Join-Path $PSScriptRoot "..\.env"))){ if($l -match "^\s*APCA_API_KEY_ID\s*=\s*(.+)$"){$k=$Matches[1].Trim()}; if($l -match "^\s*APCA_API_SECRET_KEY\s*=\s*(.+)$"){$s=$Matches[1].Trim()} } }; $h=@{ "APCA-API-KEY-ID"=$k; "APCA-API-SECRET-KEY"=$s }
 $start="2020-06-01"
 function Bars($s){ $all=@(); $pt=$null; do{ $u="https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=1Day&start=${start}T00:00:00Z&limit=10000&feed=iex&adjustment=all"; if($pt){ $u+="&page_token=$pt" }; $r=Invoke-RestMethod -Uri $u -Headers $h; $all+=$r.bars; $pt=$r.next_page_token }while($pt); $all }
 $qqq=Bars "QQQ"; $tqqq=Bars "TQQQ"; $sqqq=Bars "SQQQ"
@@ -32,3 +32,4 @@ function Eq($r){ $e=10000.0; foreach($x in $r){ $e*=(1+$x) }; [math]::Round(($e-
 "A) intraday TQQQ/SQQQ trend:  $(Eq $rA)%   Sharpe $(Sharpe $rA)"
 "B) intraday TQQQ-or-cash:     $(Eq $rB)%   Sharpe $(Sharpe $rB)"
 "C) overnight TQQQ/SQQQ trend: $(Eq $rC)%   Sharpe $(Sharpe $rC)"
+

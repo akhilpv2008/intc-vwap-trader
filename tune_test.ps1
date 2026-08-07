@@ -1,8 +1,8 @@
-# Tune test: does the +$150 profit-lock help or hurt? 2% vs 3% trailing stop?
+﻿# Tune test: does the +$150 profit-lock help or hurt? 2% vs 3% trailing stop?
 # Simulates the live intraday logic on 5-min bars (~45 days), TQQQ/SQQQ, $10k full-size per trade.
 # Daily profit-lock: once realized day P&L >= target, no NEW entries that day (matches PROTECT MODE).
 $ErrorActionPreference="Stop"
-$h=@{ "APCA-API-KEY-ID"="PKRIYKPAOXT3WFBOYB76RQI2Y5"; "APCA-API-SECRET-KEY"="9YFAk7FovxgzsyokeZBwBrbjXDdkgo6wSUtA2bYQp1do" }
+$k=$env:APCA_API_KEY_ID; $s=$env:APCA_API_SECRET_KEY; if(-not $k){ foreach($l in (Get-Content (Join-Path $PSScriptRoot "..\.env"))){ if($l -match "^\s*APCA_API_KEY_ID\s*=\s*(.+)$"){$k=$Matches[1].Trim()}; if($l -match "^\s*APCA_API_SECRET_KEY\s*=\s*(.+)$"){$s=$Matches[1].Trim()} } }; $h=@{ "APCA-API-KEY-ID"=$k; "APCA-API-SECRET-KEY"=$s }
 $start=(Get-Date).ToUniversalTime().AddDays(-45).ToString("yyyy-MM-dd")
 $BOOK=10000.0
 function Bars5($s){ $all=@();$pt=$null; do{ $u="https://data.alpaca.markets/v2/stocks/$s/bars?timeframe=5Min&start=${start}T00:00:00Z&limit=10000&feed=iex&adjustment=all"; if($pt){$u+="&page_token=$pt"}; $r=Invoke-RestMethod -Uri $u -Headers $h; $all+=$r.bars; $pt=$r.next_page_token }while($pt); $all }
@@ -41,3 +41,4 @@ function Show($label,$trail,$tgt){
 "### 2% trail + NO lock (trade all day) ###";               Show "2% / no lock" 0.02 0
 "### 3% trail + `$150 lock ###";                             Show "3% / lock 150" 0.03 150
 "### 3% trail + NO lock ###";                                Show "3% / no lock" 0.03 0
+
