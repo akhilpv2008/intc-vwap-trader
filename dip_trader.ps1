@@ -32,7 +32,13 @@ $DISASTER_STOP=0.12           # -12% broker-side tail stop (wide, rarely hit)
 # the RSI signal in 2-3 days; the cap is only a backstop. Tested and REJECTED: profit targets
 # (+3% target cut avg to 0.42% - caps winners), "first up close" (0.57%), RSI exit at 50 or 80.
 $MAX_HOLD_DAYS=10
-$EARN_BLACKOUT_DAYS=8         # widened with the longer hold so we don't sit into an earnings gap
+# EARNINGS BLACKOUT REMOVED 2026-08-07 after a proper test (earnings_edge_big.py, ~5,287 pre-earnings
+# dip-buys vs 65,763 normal ones across ~70 stocks / 27 years): dips near earnings average ~+0.74% vs
+# +0.489% for normal dips - roughly 50% BETTER - and were positive in 25 of 27 years including 2022.
+# Earnings DIRECTION is indeed unpredictable (45.5% up, worse than a coin flip), but that does not make
+# dips near earnings bad. The blackout was built on reasoning, never tested, and was costing money.
+# Set this above 0 to re-enable a blackout window; 0 = disabled (calendar still fetched for display).
+$EARN_BLACKOUT_DAYS=0
 # earnings.json is refreshed by earnings_calendar.py (free via yfinance, no API key)
 $EARN=$null
 $earnFile=Join-Path $PSScriptRoot "earnings.json"
@@ -112,6 +118,7 @@ foreach($s in $UNIVERSE){
   # EARNINGS BLACKOUT: skip if the stock reports while we'd still be holding (max 5-day hold + buffer).
   # Earnings gaps are +/-10% coin flips that swamp our ~+0.9%/trade edge - variance, not edge.
   $earnBlock=$false; $earnNote=""
+  if($EARN_BLACKOUT_DAYS -le 0){ $earnNote=" (earnings blackout disabled - tested: dips near earnings do BETTER)" }
   # Recompute days from the DATE, never trust the stored days_away - if earnings.json goes stale
   # (e.g. the cloud refresh fails) a cached "2 days away" would otherwise block the stock forever.
   if($EARN -and $EARN.earnings.PSObject.Properties.Name -contains $s){
