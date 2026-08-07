@@ -1,0 +1,17 @@
+# NEVER commit credentials
+.env
+*.env
+.env.*
+secrets.json
+credentials.json
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# local runtime state
+*.log
